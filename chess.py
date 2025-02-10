@@ -361,10 +361,33 @@ class Game:
         # Backup the current state in case we need to revert.
         backup_start = self.board[start_pos[0]][start_pos[1]]
         backup_end = self.board[end_pos[0]][end_pos[1]]
+        # For castling, we also need to backup the rook’s state.
+        castling_rook_backup = None
+        rook_start = None
+        rook_end = None
 
-        # Execute the move.
+        # Execute the king's move.
         self.board[end_pos[0]][end_pos[1]] = piece
         self.board[start_pos[0]][start_pos[1]] = None
+
+        # Handle castling: if the piece is a King and it moves two squares horizontally,
+        # then move the associated rook.
+        if isinstance(piece, King) and abs(end_pos[1] - start_pos[1]) == 2:
+            # Determine which side is castling.
+            # For kingside castling, the king moves to column 6.
+            if end_pos[1] == 6:
+                rook_start = (end_pos[0], 7)
+                rook_end = (end_pos[0], 5)
+            # For queenside castling, the king moves to column 2.
+            elif end_pos[1] == 2:
+                rook_start = (end_pos[0], 0)
+                rook_end = (end_pos[0], 3)
+
+            # Backup the rook's original position.
+            castling_rook_backup = self.board[rook_start[0]][rook_start[1]]
+            # Execute the rook move.
+            self.board[rook_end[0]][rook_end[1]] = self.board[rook_start[0]][rook_start[1]]
+            self.board[rook_start[0]][rook_start[1]] = None
 
         # Handle pawn's en passant capture.
         if isinstance(piece, Pawn) and start_pos[1] != end_pos[1] and backup_end is None:
@@ -373,9 +396,14 @@ class Game:
             captured_col = end_pos[1]
             self.board[captured_row][captured_col] = None
 
-        # Update piece-specific state (e.g. has_moved flag).
+        # Update piece-specific state (e.g., has_moved flag).
         if hasattr(piece, 'move'):
             piece.move(start_pos, end_pos)
+        # If castling occurred, update the rook's state as well.
+        if castling_rook_backup is not None and rook_start is not None:
+            rook = self.board[rook_end[0]][rook_end[1]]
+            if hasattr(rook, 'move'):
+                rook.move(rook_start, rook_end)
 
         # Update king position if needed.
         self.update_king_position(start_pos, end_pos, piece)
@@ -383,14 +411,19 @@ class Game:
         # Check that the move does not leave the current player's king in check.
         if self.is_check(self.turn):
             print("Move would leave your king in check! Reverting move.\n")
+            # Revert king's move.
             self.board[start_pos[0]][start_pos[1]] = backup_start
             self.board[end_pos[0]][end_pos[1]] = backup_end
-            # If en passant capture occurred, reverting that would require additional state handling.
+            # If castling occurred, revert the rook move as well.
+            if castling_rook_backup is not None and rook_start is not None and rook_end is not None:
+                self.board[rook_start[0]][rook_start[1]] = castling_rook_backup
+                self.board[rook_end[0]][rook_end[1]] = None
             return
 
         self.last_move = (start_pos, end_pos)
         # Switch turns.
         self.turn = 'black' if self.turn == 'white' else 'white'
+
 
     def play(self):
         while not self.game_over:
