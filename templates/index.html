@@ -1,139 +1,235 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>CHESS</title>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@700&display=swap" rel="stylesheet">
-    <style>
-        * {
-            box-sizing: border-box; /* Ensure padding and borders do not affect the size */
-        }
-        body {
-            background-color: #2a2e33; /* muted dark grey with green tint */
-            color: white;
-            font-family: 'Roboto', sans-serif;
-            margin: 0;
-            padding: 0;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-        }
-        h1 {
-            color: lightgrey;
-            font-size: 4em;
-            margin-top: 30px;
-        }
-        .chessboard-container {
-            width: 450px; /* Slightly larger than the chessboard */
-            height: 450px; /* Slightly larger than the chessboard */
-            background-color: #444; /* Dark grey box */
-            margin-top: 0px;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            border-radius: 10px;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
-        }
-        .chess-board {
-            width: 97%; /* Make sure board fills the container */
-            height: 97%; /* Make sure board fills the container */
-            background-color: #333;
-            display: grid;
-            grid-template-columns: repeat(8, 1fr); /* 8 columns */
-            grid-template-rows: repeat(8, 1fr);    /* 8 rows */
-            gap: 1px; /* Slight gap between squares */
-            border-radius: 5px;
-        }
-        .square {
-            width: 100%;
-            height: 100%;
-        }
-        .dark {
-            background-color: #7a7a6d; /* Muted dark green */
-        }
-        .light {
-            background-color: #dcd9b6; /* Muted light beige */
-        }
-    </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CHESS</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@700&display=swap" rel="stylesheet">
+  <style>
+    * {
+      box-sizing: border-box; /* Ensure padding and borders do not affect the size */
+    }
+    body {
+      background-color: #2a2e33; /* muted dark grey with green tint */
+      color: white;
+      font-family: 'Roboto', sans-serif;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    h1 {
+      color: lightgrey;
+      font-size: 4em;
+      margin-top: 30px;
+    }
+    .chessboard-container {
+      width: 450px; /* Slightly larger than the chessboard */
+      height: 450px; /* Slightly larger than the chessboard */
+      background-color: #444; /* Dark grey box */
+      margin-top: 0px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      border-radius: 10px;
+      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+    }
+    .chess-board {
+      width: 97%; /* Make sure board fills the container */
+      height: 97%; /* Make sure board fills the container */
+      background-color: #333;
+      display: grid;
+      grid-template-columns: repeat(8, 1fr); /* 8 columns */
+      grid-template-rows: repeat(8, 1fr);    /* 8 rows */
+      gap: 1px; /* Slight gap between squares */
+      border-radius: 5px;
+    }
+    .square {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      font-size: 2em; /* Adjust font size for chess icons */
+    }
+    .dark {
+      background-color: #7a7a6d; /* Muted dark green */
+    }
+    .light {
+      background-color: #dcd9b6; /* Muted light beige */
+    }
+  </style>
 </head>
 <body>
-    <h1>CHESS</h1>
-    <div class="chessboard-container">
-        <div class="chess-board">
-            <!-- 64 squares for chessboard -->
-            <div class="square light"></div>
-            <div class="square dark"></div>
-            <div class="square light"></div>
-            <div class="square dark"></div>
-            <div class="square light"></div>
-            <div class="square dark"></div>
-            <div class="square light"></div>
-            <div class="square dark"></div>
-            
-            <div class="square dark"></div>
-            <div class="square light"></div>
-            <div class="square dark"></div>
-            <div class="square light"></div>
-            <div class="square dark"></div>
-            <div class="square light"></div>
-            <div class="square dark"></div>
-            <div class="square light"></div>
-
-            <div class="square light"></div>
-            <div class="square dark"></div>
-            <div class="square light"></div>
-            <div class="square dark"></div>
-            <div class="square light"></div>
-            <div class="square dark"></div>
-            <div class="square light"></div>
-            <div class="square dark"></div>
-
-            <div class="square dark"></div>
-            <div class="square light"></div>
-            <div class="square dark"></div>
-            <div class="square light"></div>
-            <div class="square dark"></div>
-            <div class="square light"></div>
-            <div class="square dark"></div>
-            <div class="square light"></div>
-
-            <div class="square light"></div>
-            <div class="square dark"></div>
-            <div class="square light"></div>
-            <div class="square dark"></div>
-            <div class="square light"></div>
-            <div class="square dark"></div>
-            <div class="square light"></div>
-            <div class="square dark"></div>
-
-            <div class="square dark"></div>
-            <div class="square light"></div>
-            <div class="square dark"></div>
-            <div class="square light"></div>
-            <div class="square dark"></div>
-            <div class="square light"></div>
-            <div class="square dark"></div>
-            <div class="square light"></div>
-
-            <div class="square light"></div>
-            <div class="square dark"></div>
-            <div class="square light"></div>
-            <div class="square dark"></div>
-            <div class="square light"></div>
-            <div class="square dark"></div>
-            <div class="square light"></div>
-            <div class="square dark"></div>
-
-            <div class="square dark"></div>
-            <div class="square light"></div>
-            <div class="square dark"></div>
-            <div class="square light"></div>
-            <div class="square dark"></div>
-            <div class="square light"></div>
-            <div class="square dark"></div>
-            <div class="square light"></div>
-        </div>
+  <h1>CHESS</h1>
+  <div class="chessboard-container">
+    <div class="chess-board">
+      <!-- 64 squares for chessboard -->
+      <div class="square light"></div>
+      <div class="square dark"></div>
+      <div class="square light"></div>
+      <div class="square dark"></div>
+      <div class="square light"></div>
+      <div class="square dark"></div>
+      <div class="square light"></div>
+      <div class="square dark"></div>
+      
+      <div class="square dark"></div>
+      <div class="square light"></div>
+      <div class="square dark"></div>
+      <div class="square light"></div>
+      <div class="square dark"></div>
+      <div class="square light"></div>
+      <div class="square dark"></div>
+      <div class="square light"></div>
+  
+      <div class="square light"></div>
+      <div class="square dark"></div>
+      <div class="square light"></div>
+      <div class="square dark"></div>
+      <div class="square light"></div>
+      <div class="square dark"></div>
+      <div class="square light"></div>
+      <div class="square dark"></div>
+  
+      <div class="square dark"></div>
+      <div class="square light"></div>
+      <div class="square dark"></div>
+      <div class="square light"></div>
+      <div class="square dark"></div>
+      <div class="square light"></div>
+      <div class="square dark"></div>
+      <div class="square light"></div>
+  
+      <div class="square light"></div>
+      <div class="square dark"></div>
+      <div class="square light"></div>
+      <div class="square dark"></div>
+      <div class="square light"></div>
+      <div class="square dark"></div>
+      <div class="square light"></div>
+      <div class="square dark"></div>
+  
+      <div class="square dark"></div>
+      <div class="square light"></div>
+      <div class="square dark"></div>
+      <div class="square light"></div>
+      <div class="square dark"></div>
+      <div class="square light"></div>
+      <div class="square dark"></div>
+      <div class="square light"></div>
+  
+      <div class="square light"></div>
+      <div class="square dark"></div>
+      <div class="square light"></div>
+      <div class="square dark"></div>
+      <div class="square light"></div>
+      <div class="square dark"></div>
+      <div class="square light"></div>
+      <div class="square dark"></div>
+  
+      <div class="square dark"></div>
+      <div class="square light"></div>
+      <div class="square dark"></div>
+      <div class="square light"></div>
+      <div class="square dark"></div>
+      <div class="square light"></div>
+      <div class="square dark"></div>
+      <div class="square light"></div>
     </div>
+  </div>
+  
+  <script>
+    // Mapping of chess piece letters to Unicode chess icons.
+    const pieceIcons = {
+      'P': '♙', 'p': '♟',
+      'R': '♖', 'r': '♜',
+      'N': '♘', 'n': '♞',
+      'B': '♗', 'b': '♝',
+      'Q': '♕', 'q': '♛',
+      'K': '♔', 'k': '♚'
+    };
+
+    let selectedSquare = null;
+    const squares = document.querySelectorAll('.square');
+
+    // Convert a square's index (0-63) to board coordinates [row, col].
+    function getCoordinatesFromIndex(index) {
+      const row = Math.floor(index / 8);
+      const col = index % 8;
+      return [row, col];
+    }
+
+    // Fetch the board state from the server and update the display.
+    async function updateBoard() {
+      try {
+        const response = await fetch('/board');
+        const data = await response.json();
+        const board = data.board;
+        squares.forEach((square, index) => {
+          const [row, col] = getCoordinatesFromIndex(index);
+          const piece = board[row][col];
+          if (piece === '.' || piece === '') {
+            square.textContent = '';
+            square.style.color = ''; // Reset color if empty.
+          } else {
+            // Set the icon for the piece.
+            square.textContent = pieceIcons[piece] || piece;
+            // Set text color: white for uppercase (white pieces), black for lowercase (black pieces).
+            square.style.color = (piece === piece.toLowerCase()) ? 'black' : 'white';
+          }
+        });
+      } catch (error) {
+        console.error('Error updating board:', error);
+      }
+    }
+
+    // Clear any highlight borders on squares.
+    function clearSquareHighlights() {
+      squares.forEach(square => square.style.border = '');
+    }
+
+    // Handle click events on squares.
+    function handleSquareClick(event) {
+      const squareIndex = Array.from(squares).indexOf(event.target);
+      const coords = getCoordinatesFromIndex(squareIndex);
+
+      if (!selectedSquare) {
+        // First click: select the square.
+        selectedSquare = coords;
+        event.target.style.border = '2px solid red';
+      } else {
+        // Second click: attempt to move.
+        const start = selectedSquare;
+        const end = coords;
+        clearSquareHighlights();
+        selectedSquare = null;
+
+        fetch('/move', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ start: start, end: end })
+        })
+        .then(response => response.json())
+        .then(data => {
+          if (data.status === 'success') {
+            updateBoard();
+          } else {
+            alert('Invalid move!');
+          }
+        })
+        .catch(error => console.error('Error making move:', error));
+      }
+    }
+
+    // Attach click event listeners to each square.
+    squares.forEach(square => {
+      square.addEventListener('click', handleSquareClick);
+    });
+
+    // Initial board update when page loads.
+    updateBoard();
+  </script>
 </body>
 </html>
