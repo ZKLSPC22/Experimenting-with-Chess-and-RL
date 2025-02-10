@@ -193,6 +193,7 @@ class Queen(Piece):
 class King(Piece):
     def __init__(self, color):
         super().__init__(color)
+        self.has_moved = False
 
     def __str__(self):
         return 'K' if self.color == 'white' else 'k'
@@ -210,6 +211,18 @@ class King(Piece):
             if self.is_under_attack(end, board):
                 return False
             return True
+
+        # Castling.
+        if not self.has_moved and (r2, c2) in [(7, 2), (7, 6), (0, 2), (0, 6)]:
+            rook_col = 7 if c2 == 6 else 0  # Kingside (6) -> rook at 7, Queenside (2) -> rook at 0
+            rook = board[r2][rook_col]
+
+            if isinstance(rook, Rook) and not rook.has_moved:
+                # Ensure path is clear
+                if c2 == 6 and board[r2][5] is None and board[r2][6] is None:  # Kingside
+                    return True
+                if c2 == 2 and board[r2][1] is None and board[r2][2] is None and board[r2][3] is None:  # Queenside
+                    return True
 
         return False
 
