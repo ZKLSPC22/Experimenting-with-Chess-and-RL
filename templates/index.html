@@ -24,11 +24,20 @@
       font-size: 4em;
       margin-top: 30px;
     }
+    .controls {
+      margin-top: 20px;
+    }
+    .controls button {
+      margin: 0 10px;
+      padding: 10px 20px;
+      font-size: 1em;
+      cursor: pointer;
+    }
     .chessboard-container {
       width: 450px; /* Slightly larger than the chessboard */
       height: 450px; /* Slightly larger than the chessboard */
       background-color: #444; /* Dark grey box */
-      margin-top: 0px;
+      margin-top: 20px;
       display: flex;
       justify-content: center;
       align-items: center;
@@ -63,6 +72,13 @@
 </head>
 <body>
   <h1>CHESS</h1>
+  
+  <!-- Control buttons for Restart and Quit -->
+  <div class="controls">
+    <button id="restart-btn">Restart Game</button>
+    <button id="quit-btn">Quit Game</button>
+  </div>
+  
   <div class="chessboard-container">
     <div class="chess-board">
       <!-- 64 squares for chessboard -->
@@ -150,17 +166,17 @@
       'Q': '♕', 'q': '♛',
       'K': '♔', 'k': '♚'
     };
-
+  
     let selectedSquare = null;
     const squares = document.querySelectorAll('.square');
-
+  
     // Convert a square's index (0-63) to board coordinates [row, col].
     function getCoordinatesFromIndex(index) {
       const row = Math.floor(index / 8);
       const col = index % 8;
       return [row, col];
     }
-
+  
     // Fetch the board state from the server and update the display.
     async function updateBoard() {
       try {
@@ -174,9 +190,8 @@
             square.textContent = '';
             square.style.color = ''; // Reset color if empty.
           } else {
-            // Set the icon for the piece.
             square.textContent = pieceIcons[piece] || piece;
-            // Set text color: white for uppercase (white pieces), black for lowercase (black pieces).
+            // Use black font for lowercase (black pieces), white for uppercase (white pieces).
             square.style.color = (piece === piece.toLowerCase()) ? 'black' : 'white';
           }
         });
@@ -184,17 +199,17 @@
         console.error('Error updating board:', error);
       }
     }
-
+  
     // Clear any highlight borders on squares.
     function clearSquareHighlights() {
       squares.forEach(square => square.style.border = '');
     }
-
+  
     // Handle click events on squares.
     function handleSquareClick(event) {
       const squareIndex = Array.from(squares).indexOf(event.target);
       const coords = getCoordinatesFromIndex(squareIndex);
-
+  
       if (!selectedSquare) {
         // First click: select the square.
         selectedSquare = coords;
@@ -205,7 +220,7 @@
         const end = coords;
         clearSquareHighlights();
         selectedSquare = null;
-
+  
         fetch('/move', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -215,6 +230,12 @@
         .then(data => {
           if (data.status === 'success') {
             updateBoard();
+            if (data.game_over) {
+              // Announce the end of the game.
+              alert(data.message);
+              // Disable further moves (e.g., remove click listeners).
+              squares.forEach(square => square.removeEventListener('click', handleSquareClick));
+            }
           } else {
             alert('Invalid move!');
           }
@@ -222,14 +243,39 @@
         .catch(error => console.error('Error making move:', error));
       }
     }
-
+  
     // Attach click event listeners to each square.
     squares.forEach(square => {
       square.addEventListener('click', handleSquareClick);
     });
-
+  
+    // Handler for the Restart button.
+    document.getElementById('restart-btn').addEventListener('click', () => {
+      fetch('/restart', { method: 'POST' })
+        .then(response => response.json())
+        .then(data => {
+          alert(data.message);
+          updateBoard();
+          // Reattach click listeners if they were removed.
+          squares.forEach(square => square.addEventListener('click', handleSquareClick));
+        })
+        .catch(error => console.error('Error restarting game:', error));
+    });
+  
+    // Handler for the Quit button.
+    document.getElementById('quit-btn').addEventListener('click', () => {
+      fetch('/quit', { method: 'POST' })
+        .then(response => response.json())
+        .then(data => {
+          alert(data.message);
+          // Optionally disable further moves.
+          squares.forEach(square => square.removeEventListener('click', handleSquareClick));
+        })
+        .catch(error => console.error('Error quitting game:', error));
+    });
+  
     // Initial board update when page loads.
     updateBoard();
-  </script>
+  </script>    
 </body>
 </html>

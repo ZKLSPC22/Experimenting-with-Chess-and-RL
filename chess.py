@@ -503,9 +503,14 @@ class Game:
 
 
 # Wrapping the Game class in a Flask API
+# chess.py
+
+# Assume your existing Game, Pawn, King, Rook, etc. classes are defined above.
+# We now define an updated ChessGame class that wraps Game for the Flask API.
+
 class ChessGame:
     def __init__(self):
-        self.game = Game() # Initialize a new game.
+        self.game = Game()  # Initialize the underlying game.
     
     def get_board(self):
         """
@@ -522,42 +527,136 @@ class ChessGame:
                     row_repr.append(str(piece))
             board_repr.append(row_repr)
         return board_repr
-    
+
     def make_move(self, start, end):
         """
         Attempts to make a move from 'start' to 'end'.
-        'start' and 'end' should be tuples in board coordinates (row, column).
-        Returns True if the move was successful, or False if the move was invalid.
+        'start' and 'end' are tuples (row, col).
+        Returns True if the move was successful; otherwise, False.
+        Also, after a valid move, if the opponent is in checkmate the game is flagged as over.
         """
         piece = self.game.get_piece_at(start)
         if piece is None or piece.color != self.game.turn:
             return False
-        
+
+        # Validate move using piece logic (this should include normal moves, en passant, and castling checks).
         if not piece.is_valid_move(start, end, self.game.board, self.game.last_move):
             return False
-        
-        # Backup the current state in case we need to revert.
-        backup_start = self.game.board[start[0]][start[1]]
-        backup_end = self.game.board[end[0]][end[1]]
 
-        # Execute the move.
+        # Backup state for potential reversion.
+        backup_start = self.game.board[start[0]][start[1]]
+        backup_end   = self.game.board[end[0]][end[1]]
+        backup_captured = None  # For en passant capture.
+        backup_rook = None      # For castling.
+        rook_start = None
+        rook_end   = None
+
+        # Execute the move: move the piece.
         self.game.board[end[0]][end[1]] = piece
         self.game.board[start[0]][start[1]] = None
-        
-        # Handles pieces that need to update state after moving.
+
+        # Handle en passant capture.
+        # If a pawn moves diagonally into an empty square, remove the opponent pawn that moved two squares last move.
+        if isinstance(piece, Pawn) and (start[1] != end[1]) and backup_end is None:
+            # In our design, the captured pawn is located in the same row as the moving pawn's start.
+            captured_row = start[0]
+            captured_col = end[1]
+            backup_captured = self.game.board[captured_row][captured_col]
+            self.game.board[captured_row][captured_col] = None
+
+        # Handle castling.
+        # If a king moves two squares horizontally, also move the corresponding rook.
+        if isinstance(piece, King) and abs(end[1] - start[1]) == 2:
+            if end[1] == 6:  # kingside castling
+                rook_start = (end[0], 7)
+                rook_end   = (end[0], 5)
+            elif end[1] == 2:  # queenside castling
+                rook_start = (end[0], 0)
+                rook_end   = (end[0], 3)
+            backup_rook = self.game.board[rook_start[0]][rook_start[1]]
+            self.game.board[rook_end[0]][rook_end[1]] = backup_rook
+            self.game.board[rook_start[0]][rook_start[1]] = None
+            if hasattr(backup_rook, 'move'):
+                backup_rook.move(rook_start, rook_end)
+
+        # Update piece-specific state.
         if hasattr(piece, 'move'):
             piece.move(start, end)
-        
-        # Update king position if needed.
+
+        # Update king's position if necessary.
         self.game.update_king_position(start, end, piece)
 
-        # If the move leaves the current player's king in check, revert it
+        # If the move leaves the current player's king in check, revert the move.
         if self.game.is_check(self.game.turn):
             self.game.board[start[0]][start[1]] = backup_start
             self.game.board[end[0]][end[1]] = backup_end
+            if backup_rook is not None and rook_start is not None and rook_end is not None:
+                self.game.board[rook_start[0]][rook_start[1]] = backup_rook
+                self.game.board[rook_end[0]][rook_end[1]] = None
+            if backup_captured is not None:
+                self.game.board[captured_row][captured_col] = backup_captured
             return False
-        
-        # Update last move and switch turns
+
+        # Update last move and switch turns.
         self.game.last_move = (start, end)
         self.game.turn = 'black' if self.game.turn == 'white' else 'white'
+
+        # After a valid move, check if the opposing player is in checkmate.
+        if self.is_checkmate(self.game.turn):
+            self.game.game_over = True  # Flag the game as over.
         return True
+
+    def is_checkmate(self, color):
+        """
+        Returns True if the player of the given color is in checkmate.
+        This method simulates every possible move for the given color.
+        """
+        if not self.game.is_check(color):
+            return False
+
+        # For each piece of the given color, try every move.
+        for r in range(8):
+            for c in range(8):
+                piece = self.game.board[r][c]
+                if piece is not None and piece.color == color:
+                    start = (r, c)
+                    for r2 in range(8):
+                        for c2 in range(8):
+                            end = (r2, c2)
+                            if piece.is_valid_move(start, end, self.game.board, self.game.last_move):
+                                # Backup state.
+                                backup_start = self.game.board[r][c]
+                                backup_end = self.game.board[r2][c2]
+                                orig_white_king = self.game.white_king_pos
+                                orig_black_king = self.game.black_king_pos
+
+                                # Make the move temporarily.
+                                self.game.board[r2][c2] = piece
+                                self.game.board[r][c] = None
+                                if isinstance(piece, King):
+                                    if color == 'white':
+                                        self.game.white_king_pos = (r2, c2)
+                                    else:
+                                        self.game.black_king_pos = (r2, c2)
+                                in_check = self.game.is_check(color)
+                                # Revert move.
+                                self.game.board[r][c] = backup_start
+                                self.game.board[r2][c2] = backup_end
+                                self.game.white_king_pos = orig_white_king
+                                self.game.black_king_pos = orig_black_king
+                                if not in_check:
+                                    return False
+        return True
+
+    def restart_game(self):
+        """
+        Restarts the game by reinitializing the underlying Game class.
+        """
+        self.game = Game()
+
+    def quit_game(self):
+        """
+        Quits the game by flagging it as over.
+        (Your Flask API can interpret this flag to stop accepting moves.)
+        """
+        self.game.game_over = True
