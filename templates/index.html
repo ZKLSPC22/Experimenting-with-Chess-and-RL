@@ -80,7 +80,7 @@
   </div>
   
   <div class="chessboard-container">
-    <div class="chess-board">
+    <div class="chess-board" id="chess-board">
       <!-- 64 squares for chessboard -->
       <div class="square light"></div>
       <div class="square dark"></div>
@@ -179,25 +179,25 @@
   
     // Fetch the board state from the server and update the display.
     async function updateBoard() {
-      try {
-        const response = await fetch('/board');
-        const data = await response.json();
-        const board = data.board;
-        squares.forEach((square, index) => {
-          const [row, col] = getCoordinatesFromIndex(index);
-          const piece = board[row][col];
-          if (piece === '.' || piece === '') {
-            square.textContent = '';
-            square.style.color = ''; // Reset color if empty.
-          } else {
-            square.textContent = pieceIcons[piece] || piece;
-            // Use black font for lowercase (black pieces), white for uppercase (white pieces).
-            square.style.color = (piece === piece.toLowerCase()) ? 'black' : 'white';
-          }
-        });
-      } catch (error) {
-        console.error('Error updating board:', error);
-      }
+        try {
+            const response = await fetch('/board');
+            const data = await response.json();
+            const board = data.board;
+            console.log('Board state from server:', board);  // 调试信息
+            squares.forEach((square, index) => {
+                const [row, col] = getCoordinatesFromIndex(index);
+                const piece = board[row][col];
+                if (piece === '.' || piece === '') {
+                    square.textContent = '';
+                    square.style.color = ''; // Reset color if empty.
+                } else {
+                    square.textContent = pieceIcons[piece] || piece;
+                    square.style.color = (piece === piece.toLowerCase()) ? 'black' : 'white';
+                }
+            });
+        } catch (error) {
+            console.error('Error updating board:', error);
+        }
     }
   
     // Clear any highlight borders on squares.
@@ -205,43 +205,50 @@
       squares.forEach(square => square.style.border = '');
     }
   
+    function handleGameEnd(response) {
+      if (response.game_over) {
+        if (response.message.includes('Checkmate')) {
+          alert(response.message);
+        } else if (response.message === 'Stalemate!') {
+          alert(response.message);
+        }
+        // 禁用进一步的移动
+        squares.forEach(square => square.removeEventListener('click', handleSquareClick));
+      }
+    }
+
     // Handle click events on squares.
     function handleSquareClick(event) {
-      const squareIndex = Array.from(squares).indexOf(event.target);
-      const coords = getCoordinatesFromIndex(squareIndex);
-  
-      if (!selectedSquare) {
-        // First click: select the square.
-        selectedSquare = coords;
-        event.target.style.border = '2px solid red';
-      } else {
-        // Second click: attempt to move.
-        const start = selectedSquare;
-        const end = coords;
-        clearSquareHighlights();
-        selectedSquare = null;
-  
-        fetch('/move', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ start: start, end: end })
-        })
-        .then(response => response.json())
-        .then(data => {
-          if (data.status === 'success') {
-            updateBoard();
-            if (data.game_over) {
-              // Announce the end of the game.
-              alert(data.message);
-              // Disable further moves (e.g., remove click listeners).
-              squares.forEach(square => square.removeEventListener('click', handleSquareClick));
-            }
-          } else {
-            alert('Invalid move!');
-          }
-        })
-        .catch(error => console.error('Error making move:', error));
-      }
+        const squareIndex = Array.from(squares).indexOf(event.target);
+        const coords = getCoordinatesFromIndex(squareIndex);
+
+        if (!selectedSquare) {
+            // 第一次点击：选择方格。
+            selectedSquare = coords;
+            event.target.style.border = '2px solid red';
+        } else {
+            // 第二次点击：尝试移动。
+            const start = selectedSquare;
+            const end = coords;
+            clearSquareHighlights();
+            selectedSquare = null;
+
+            fetch('/move', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ start: start, end: end })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.status === 'success') {
+                    updateBoard();
+                    handleGameEnd(data);
+                } else {
+                    alert('Invalid move!');
+                }
+            })
+            .catch(error => console.error('Error making move:', error));
+        }
     }
   
     // Attach click event listeners to each square.

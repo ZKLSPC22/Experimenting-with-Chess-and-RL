@@ -1,8 +1,8 @@
 from flask import Flask, render_template, request, jsonify
-from chess import ChessGame  # Import the ChessGame wrapper from your chess.py file
+from chess import RemoteGame  # 确保路径正确
 
 app = Flask(__name__)
-game = ChessGame()  # Instantiate the chess game
+game = RemoteGame()  # 实例化国际象棋游戏
 
 @app.route('/')
 def home():
@@ -15,20 +15,21 @@ def get_board():
 @app.route('/move', methods=['POST'])
 def make_move():
     data = request.json
-    start = data.get('start')
-    end = data.get('end')
-    # Convert start and end to tuples.
-    if game.make_move(tuple(start), tuple(end)):
+    start = tuple(data.get('start'))
+    end = tuple(data.get('end'))
+    if game.make_move(start, end):
         response = {
             'status': 'success',
             'board': game.get_board()
         }
-        # If the game is over (i.e. checkmate has been detected):
-        if game.game.game_over:
-            # The winner is the opposite of the current turn because the turn was already switched.
-            winner = 'white' if game.game.turn == 'black' else 'black'
-            response['game_over'] = True
-            response['message'] = f'Checkmate! {winner.capitalize()} wins!'
+        if game.game_over:
+            if game.is_checkmate(game.turn):
+                winner = 'white' if game.turn == 'black' else 'black'
+                response['game_over'] = True
+                response['message'] = f'Checkmate! {winner.capitalize()} wins!'
+            elif game.is_stalemate(game.turn):
+                response['game_over'] = True
+                response['message'] = 'Stalemate!'
         return jsonify(response)
     return jsonify({'status': 'invalid move'})
 

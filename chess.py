@@ -1,3 +1,6 @@
+import copy
+
+
 class Piece:
     def __init__(self, color):
         self.color = color
@@ -28,8 +31,12 @@ class Pawn(Piece):
             if r2 == r1 + direction and board[r2][c2] is None:
                 return True
             # Two steps forward on first move
-            if (not self.has_moved and r2 == r1 + 2 * direction and 
-                board[r1 + direction][c1] is None and board[r2][c2] is None):
+            if (
+                not self.has_moved 
+                and r2 == r1 + 2 * direction 
+                and board[r1 + direction][c1] is None 
+                and board[r2][c2] is None
+            ):
                 return True
 
         # Diagonal capture
@@ -42,10 +49,13 @@ class Pawn(Piece):
                 prev_start, prev_end = last_move
                 moved_piece = board[prev_end[0]][prev_end[1]]
                 # Check that the enemy pawn just moved two squares and is adjacent.
-                if (isinstance(moved_piece, Pawn) and 
-                    moved_piece.color != self.color and 
-                    abs(prev_start[0] - prev_end[0]) == 2 and 
-                    prev_end[0] == r1 and prev_end[1] == c2):
+                if (
+                    isinstance(moved_piece, Pawn)
+                    and moved_piece.color != self.color
+                    and abs(prev_start[0] - prev_end[0]) == 2
+                    and prev_end[0] == r1 
+                    and prev_end[1] == c2
+                ):
                     return True
 
         return False
@@ -138,7 +148,10 @@ class Knight(Piece):
         if board[r2][c2] is not None and board[r2][c2].color == self.color:
             return False
 
-        if (abs(r2 - r1) == 2 and abs(c2 - c1) == 1) or (abs(r2 - r1) == 1 and abs(c2 - c1) == 2):
+        if (
+            (abs(r2 - r1) == 2 and abs(c2 - c1) == 1) 
+            or (abs(r2 - r1) == 1 and abs(c2 - c1) == 2)
+        ):
             return True
 
         return False
@@ -219,11 +232,23 @@ class King(Piece):
 
             if isinstance(rook, Rook) and not rook.has_moved:
                 # Ensure path is clear
-                if c2 == 6 and board[r2][5] is None and board[r2][6] is None:  # Kingside
-                    # Additional safety checks (not in, through, or ending in check) are recommended.
+                if (
+                    c2 == 6 
+                    and board[r2][5] is None 
+                    and board[r2][6] is None 
+                    and not self.is_under_attack(end, board)
+                ):  # Kingside
                     return True
-                if c2 == 2 and board[r2][1] is None and board[r2][2] is None and board[r2][3] is None:  # Queenside
+                if (
+                    c2 == 2 
+                    and board[r2][1] is None 
+                    and board[r2][2] is None 
+                    and board[r2][3] is None
+                    and not self.is_under_attack(end, board)
+                ):  # Queenside
                     return True
+                if self.is_under_attack(end, board):
+                    return False
 
         return False
 
@@ -245,6 +270,7 @@ class King(Piece):
 class Game:
     def __init__(self):
         self.board = self.create_board()
+        self.backup_board = copy.deepcopy(self.board)
         self.turn = 'white'  # White moves first.
         self.game_over = False
         self.last_move = None  # Stores the last move for en passant.
@@ -255,6 +281,18 @@ class Game:
     def create_board(self):
         # Create an 8x8 board initialized with None.
         return [[None for _ in range(8)] for _ in range(8)]
+
+    def get_board(self):
+        board_state = []
+        for row in self.board:
+            board_row = []
+            for piece in row:
+                if piece is None:
+                    board_row.append('.')
+                else:
+                    board_row.append(piece.__str__())
+            board_state.append(board_row)
+        return board_state
 
     def setup_pieces(self):
         # With convert_position mapping, row 0 is rank 8 and row 7 is rank 1.
@@ -288,6 +326,125 @@ class Game:
             print(" ".join(row_str))
         print()  # Blank line for spacing.
 
+    # Check position not out of range
+    def pos_in_range(self, pos):
+        if pos is None or pos == "quit":
+            return False
+        r, c = pos
+        return 0 <= r < 8 and 0 <= c < 8
+
+    # Get piece at given position
+    def get_piece_at(self, pos, board):
+        r, c = pos
+        if self.pos_in_range(pos):
+            return board[r][c]
+        return None
+
+    # Handle pawn's en passant capture.
+    def en_passant(self, start, end):
+        print("processing En Passant")
+        piece = self.backup_board[end[0]][end[1]]
+        captured_row = start[0]
+        captured_col = end[1]
+        if (
+            isinstance(piece, Pawn)
+            and start[1] != end[1]
+            and self.board[end[0]][end[1]] is None
+            and isinstance(self.backup_board[captured_row][captured_col], Pawn)
+        ):
+            captured_row = start[0]
+            captured_col = end[1]
+            self.backup_board[captured_row][captured_col] = None
+            print(f"en passant, taken {captured_row, captured_col}")
+    
+    # Handle castling: if the piece is a King and it moves two squares horizontally,
+    # then move the associated rook.
+    def castle(self, start, end):
+        piece = self.backup_board[end[0]][end[1]]
+        if isinstance(piece, King) and abs(end[1] - start[1]) == 2 and start[0] == end[0]:
+            if end[1] == 6:  # Kingside
+                rook_start = (end[0], 7)
+                rook_end = (end[0], 5)
+            elif end[1] == 2:  # Queenside
+                rook_start = (end[0], 0)
+                rook_end = (end[0], 3)
+
+            self.backup_board[rook_end[0]][rook_end[1]] = self.backup_board[rook_start[0]][rook_start[1]]
+            self.backup_board[rook_start[0]][rook_start[1]] = None
+
+    def is_check(self, color, board):
+        # Check if the king of the given color is under attack.
+        king_pos = self.white_king_pos if color == 'white' else self.black_king_pos
+        opponent_color = 'black' if color == 'white' else 'white'
+        for r in range(8):
+            for c in range(8):
+                piece = board[r][c]
+                if piece is not None and piece.color == opponent_color:
+                    if piece.is_valid_move((r, c), king_pos, board, self.last_move):
+                        return True
+        return False
+    
+    def no_piece_can_move(self, color, board):
+        for r in range(8):
+            for c in range(8):
+                piece = board[r][c]
+                if piece is not None and piece.color == color:
+                    start = (r, c)
+                    for r2 in range(8):
+                        for c2 in range(8):
+                            end = (r2, c2)
+                            # Check if the piece can legally move.
+                            if piece.is_valid_move(start, end, board, self.last_move):
+                                # Backup the board state.
+                                backup_start = board[r][c]
+                                backup_end = board[r2][c2]
+                                original_white_king = self.white_king_pos
+                                original_black_king = self.black_king_pos
+
+                                # Make the move.
+                                board[r2][c2] = piece
+                                board[r][c] = None
+                                if isinstance(piece, King):
+                                    if piece.color == 'white':
+                                        self.white_king_pos = (r2, c2)
+                                    else:
+                                        self.black_king_pos = (r2, c2)
+                                # Check if the king is still in check.
+                                in_check = self.is_check(color, board)
+                                # Revert the move.
+                                board[r][c] = backup_start
+                                board[r2][c2] = backup_end
+                                self.white_king_pos = original_white_king
+                                self.black_king_pos = original_black_king
+                                if not in_check:
+                                    return False
+        return True
+
+    def is_checkmate(self, color):
+        # First, if the king is not in check, it's not checkmate.
+        if not self.is_check(color, self.board):
+            return False
+
+        return self.no_piece_can_move(color, self.board)
+    
+    def is_stalemate(self, color):
+        if self.is_check(color, self.board):
+            return False
+
+        return self.no_piece_can_move(color, self.board)
+
+
+    def update_king_position(self, start, end, piece):
+        # If a king moves, update its stored position.
+        if isinstance(piece, King):
+            if piece.color == 'white':
+                self.white_king_pos = end
+            else:
+                self.black_king_pos = end
+
+
+class LocalGame(Game):
+    # Converts user input into coordinates
     def convert_position(self, pos_str):
         """
         Converts a chess position (e.g., 'a2') to board indices.
@@ -307,109 +464,38 @@ class Game:
         row_index = 8 - row_num  # Rank 8 becomes row 0.
         col_index = ord(col) - ord('a')
         return (row_index, col_index)
-
-    def is_valid_position(self, pos):
-        if pos is None or pos == "quit":
-            return False
-        r, c = pos
-        return 0 <= r < 8 and 0 <= c < 8
-
-    def get_piece_at(self, pos):
-        r, c = pos
-        if self.is_valid_position(pos):
-            return self.board[r][c]
-        return None
-
-    def is_check(self, color):
-        # Check if the king of the given color is under attack.
-        king_pos = self.white_king_pos if color == 'white' else self.black_king_pos
-        opponent_color = 'black' if color == 'white' else 'white'
-        for r in range(8):
-            for c in range(8):
-                piece = self.board[r][c]
-                if piece is not None and piece.color == opponent_color:
-                    if piece.is_valid_move((r, c), king_pos, self.board, self.last_move):
-                        return True
-        return False
-
-    def is_checkmate(self, color):
-        # First, if the king is not in check, it's not checkmate.
-        if not self.is_check(color):
-            return False
-
-        # Try every move for every piece of the given color.
-        for r in range(8):
-            for c in range(8):
-                piece = self.board[r][c]
-                if piece is not None and piece.color == color:
-                    start = (r, c)
-                    for r2 in range(8):
-                        for c2 in range(8):
-                            end = (r2, c2)
-                            # Check if the piece can legally move.
-                            if piece.is_valid_move(start, end, self.board, self.last_move):
-                                # Backup the board state.
-                                backup_start = self.board[r][c]
-                                backup_end = self.board[r2][c2]
-                                original_white_king = self.white_king_pos
-                                original_black_king = self.black_king_pos
-
-                                # Make the move.
-                                self.board[r2][c2] = piece
-                                self.board[r][c] = None
-                                if isinstance(piece, King):
-                                    if piece.color == 'white':
-                                        self.white_king_pos = (r2, c2)
-                                    else:
-                                        self.black_king_pos = (r2, c2)
-                                # Check if the king is still in check.
-                                in_check = self.is_check(color)
-                                # Revert the move.
-                                self.board[r][c] = backup_start
-                                self.board[r2][c2] = backup_end
-                                self.white_king_pos = original_white_king
-                                self.black_king_pos = original_black_king
-                                if not in_check:
-                                    return False
-        return True
-
-    def update_king_position(self, start, end, piece):
-        # If a king moves, update its stored position.
-        if isinstance(piece, King):
-            if piece.color == 'white':
-                self.white_king_pos = end
-            else:
-                self.black_king_pos = end
-
-    def play_turn(self):
-        print(f"{self.turn.capitalize()}'s turn")
-        # Get starting position.
+    
+    # Gets starting position from user input, quit if told.
+    def get_start_pos(self):
         start_str = input("Enter the starting position (e.g., 'a2') or 'quit' to exit: ").strip().lower()
         if start_str == "quit":
             self.game_over = True
             return
-
         start_pos = self.convert_position(start_str)
-        if start_pos == "quit":
-            self.game_over = True
-            return
+        return start_pos
 
-        # Get ending position.
+    # Get ending position from user input, quit if told.
+    def get_end_pos(self):
         end_str = input("Enter the ending position (e.g., 'a3') or 'quit' to exit: ").strip().lower()
         if end_str == "quit":
             self.game_over = True
             return
-
         end_pos = self.convert_position(end_str)
-        if end_pos == "quit":
-            self.game_over = True
-            return
-
-        if not self.is_valid_position(start_pos) or not self.is_valid_position(end_pos):
+        return end_pos
+    
+    def play_turn(self):
+        start_pos = self.get_start_pos()
+        end_pos = self.get_end_pos()
+        
+        if not self.pos_in_range(start_pos) or not self.pos_in_range(end_pos):
             print("Invalid position(s). Please try again.\n")
             return
+        
+        if not isinstance(self.board[start_pos[0]][start_pos[1]], Piece):
+            print(f"You can't start from an empty square.")
+            return
 
-        piece = self.get_piece_at(start_pos)
+        piece = self.get_piece_at(start_pos, self.board)
         if piece is None:
             print("No piece at the starting position. Try again.\n")
             return
@@ -419,63 +505,41 @@ class Game:
             return
 
         if not piece.is_valid_move(start_pos, end_pos, self.board, self.last_move):
+            if isinstance(piece, King):
+                print("Move would leave your king in check!")
+                print("King moves into check") # Debug
+                return
             print("Invalid move for that piece. Try again.\n")
             return
 
         # Backup the current state in case we need to revert.
-        backup_start = self.board[start_pos[0]][start_pos[1]]
-        backup_end = self.board[end_pos[0]][end_pos[1]]
-        # For castling, backup the rook.
-        castling_rook_backup = None
-        rook_start = None
-        rook_end = None
+        self.backup_board = copy.deepcopy(self.board)
 
-        # Execute the king's or other piece's move.
-        self.board[end_pos[0]][end_pos[1]] = piece
-        self.board[start_pos[0]][start_pos[1]] = None
+        # Execute the move on the backup board.
+        self.backup_board[end_pos[0]][end_pos[1]] = piece
+        self.backup_board[start_pos[0]][start_pos[1]] = None
 
-        # Handle castling: if the piece is a King and it moves two squares horizontally,
-        # then move the associated rook.
-        if isinstance(piece, King) and abs(end_pos[1] - start_pos[1]) == 2:
-            if end_pos[1] == 6:  # Kingside
-                rook_start = (end_pos[0], 7)
-                rook_end = (end_pos[0], 5)
-            elif end_pos[1] == 2:  # Queenside
-                rook_start = (end_pos[0], 0)
-                rook_end = (end_pos[0], 3)
-
-            castling_rook_backup = self.board[rook_start[0]][rook_start[1]]
-            self.board[rook_end[0]][rook_end[1]] = self.board[rook_start[0]][rook_start[1]]
-            self.board[rook_start[0]][rook_start[1]] = None
-
-        # Handle pawn's en passant capture.
-        if isinstance(piece, Pawn) and start_pos[1] != end_pos[1] and backup_end is None:
-            captured_row = start_pos[0]
-            captured_col = end_pos[1]
-            self.board[captured_row][captured_col] = None
+        self.en_passant(start_pos, end_pos)
+        self.castle(start_pos, end_pos)
 
         # Update piece-specific state.
         if hasattr(piece, 'move'):
             piece.move(start_pos, end_pos)
-        if castling_rook_backup is not None and rook_start is not None:
-            rook = self.board[rook_end[0]][rook_end[1]]
-            if hasattr(rook, 'move'):
-                rook.move(rook_start, rook_end)
 
         # Update king position if needed.
         self.update_king_position(start_pos, end_pos, piece)
 
         # Check that the move does not leave the current player's king in check.
-        if self.is_check(self.turn):
-            print("Move would leave your king in check! Reverting move.\n")
-            self.board[start_pos[0]][start_pos[1]] = backup_start
-            self.board[end_pos[0]][end_pos[1]] = backup_end
-            if castling_rook_backup is not None and rook_start is not None and rook_end is not None:
-                self.board[rook_start[0]][rook_start[1]] = castling_rook_backup
-                self.board[rook_end[0]][rook_end[1]] = None
+        if self.is_check(self.turn, self.backup_board):
+            print("Move would leave your king in check!")
+            self.backup_board = copy.deepcopy(self.board)
+            print("Move leaves king in check") # Debug
             return
-
+        
+        # Stores last move for en passant
         self.last_move = (start_pos, end_pos)
+        # Make move by updating the entire board
+        self.board = copy.deepcopy(self.backup_board)
         # Switch turns.
         self.turn = 'black' if self.turn == 'white' else 'white'
 
@@ -490,44 +554,27 @@ class Game:
                 self.__init__()  # Reinitialize the game.
             else:
                 self.game_over = True
+        
+        if self.is_stalemate(self.turn):
+            self.display_board()
+            print("Stalemate!")
+            choice = input("Enter 'quit' to exit or 'restart' to start a new game: ").strip().lower()
+            if choice == "restart":
+                self.__init__()  # Reinitialize the game.
+            else:
+                self.game_over = True
 
     def play(self):
         while not self.game_over:
             self.display_board()
             self.play_turn()
 
+    def local_game(self):
+        while not self.game_over:
+            self.display_board()
 
-# if __name__ == "__main__":
-#     game = Game()
-#     game.play()
 
-
-# Wrapping the Game class in a Flask API
-# chess.py
-
-# Assume your existing Game, Pawn, King, Rook, etc. classes are defined above.
-# We now define an updated ChessGame class that wraps Game for the Flask API.
-
-class ChessGame:
-    def __init__(self):
-        self.game = Game()  # Initialize the underlying game.
-    
-    def get_board(self):
-        """
-        Returns a 2D list representing the board state.
-        Each element is either '.' (for an empty square) or the string representation of a piece.
-        """
-        board_repr = []
-        for row in self.game.board:
-            row_repr = []
-            for piece in row:
-                if piece is None:
-                    row_repr.append('.')
-                else:
-                    row_repr.append(str(piece))
-            board_repr.append(row_repr)
-        return board_repr
-
+class RemoteGame(Game):
     def make_move(self, start, end):
         """
         Attempts to make a move from 'start' to 'end'.
@@ -535,128 +582,72 @@ class ChessGame:
         Returns True if the move was successful; otherwise, False.
         Also, after a valid move, if the opponent is in checkmate the game is flagged as over.
         """
-        piece = self.game.get_piece_at(start)
-        if piece is None or piece.color != self.game.turn:
+        piece = self.get_piece_at(start, self.board)
+        if piece is None or piece.color != self.turn:
+            print(f"Invalid move: {start} to {end} by {self.turn}")
             return False
 
         # Validate move using piece logic (this should include normal moves, en passant, and castling checks).
-        if not piece.is_valid_move(start, end, self.game.board, self.game.last_move):
+        if not piece.is_valid_move(start, end, self.board, self.last_move):
+            print(f"Invalid move: {start} to {end} by {self.turn}")
             return False
 
-        # Backup state for potential reversion.
-        backup_start = self.game.board[start[0]][start[1]]
-        backup_end   = self.game.board[end[0]][end[1]]
-        backup_captured = None  # For en passant capture.
-        backup_rook = None      # For castling.
-        rook_start = None
-        rook_end   = None
+        # Backup the current state in case we need to revert.
+        self.backup_board = copy.deepcopy(self.board)
 
-        # Execute the move: move the piece.
-        self.game.board[end[0]][end[1]] = piece
-        self.game.board[start[0]][start[1]] = None
+        # Execute the move on the backup board.
+        self.backup_board[end[0]][end[1]] = piece
+        self.backup_board[start[0]][start[1]] = None
 
-        # Handle en passant capture.
-        # If a pawn moves diagonally into an empty square, remove the opponent pawn that moved two squares last move.
-        if isinstance(piece, Pawn) and (start[1] != end[1]) and backup_end is None:
-            # In our design, the captured pawn is located in the same row as the moving pawn's start.
-            captured_row = start[0]
-            captured_col = end[1]
-            backup_captured = self.game.board[captured_row][captured_col]
-            self.game.board[captured_row][captured_col] = None
-
-        # Handle castling.
-        # If a king moves two squares horizontally, also move the corresponding rook.
-        if isinstance(piece, King) and abs(end[1] - start[1]) == 2:
-            if end[1] == 6:  # kingside castling
-                rook_start = (end[0], 7)
-                rook_end   = (end[0], 5)
-            elif end[1] == 2:  # queenside castling
-                rook_start = (end[0], 0)
-                rook_end   = (end[0], 3)
-            backup_rook = self.game.board[rook_start[0]][rook_start[1]]
-            self.game.board[rook_end[0]][rook_end[1]] = backup_rook
-            self.game.board[rook_start[0]][rook_start[1]] = None
-            if hasattr(backup_rook, 'move'):
-                backup_rook.move(rook_start, rook_end)
+        self.en_passant(start, end)
+        self.castle(start, end)
 
         # Update piece-specific state.
         if hasattr(piece, 'move'):
             piece.move(start, end)
 
         # Update king's position if necessary.
-        self.game.update_king_position(start, end, piece)
+        self.update_king_position(start, end, piece)
 
         # If the move leaves the current player's king in check, revert the move.
-        if self.game.is_check(self.game.turn):
-            self.game.board[start[0]][start[1]] = backup_start
-            self.game.board[end[0]][end[1]] = backup_end
-            if backup_rook is not None and rook_start is not None and rook_end is not None:
-                self.game.board[rook_start[0]][rook_start[1]] = backup_rook
-                self.game.board[rook_end[0]][rook_end[1]] = None
-            if backup_captured is not None:
-                self.game.board[captured_row][captured_col] = backup_captured
+        if self.is_check(self.turn, self.backup_board):
+            print(f"{self.turn} is in check")
+            self.backup_board = copy.deepcopy(self.board)
             return False
+        print("no check")
 
-        # Update last move and switch turns.
-        self.game.last_move = (start, end)
-        self.game.turn = 'black' if self.game.turn == 'white' else 'white'
+        # Stores last move for en passant
+        self.last_move = (start, end)
+        # Make move by updating the entire board
+        self.board = copy.deepcopy(self.backup_board)
+        # Switch turns.
+        self.turn = 'black' if self.turn == 'white' else 'white'
 
         # After a valid move, check if the opposing player is in checkmate.
-        if self.is_checkmate(self.game.turn):
-            self.game.game_over = True  # Flag the game as over.
-        return True
+        if self.is_checkmate(self.turn):
+            self.game_over = True
 
-    def is_checkmate(self, color):
-        """
-        Returns True if the player of the given color is in checkmate.
-        This method simulates every possible move for the given color.
-        """
-        if not self.game.is_check(color):
-            return False
-
-        # For each piece of the given color, try every move.
-        for r in range(8):
-            for c in range(8):
-                piece = self.game.board[r][c]
-                if piece is not None and piece.color == color:
-                    start = (r, c)
-                    for r2 in range(8):
-                        for c2 in range(8):
-                            end = (r2, c2)
-                            if piece.is_valid_move(start, end, self.game.board, self.game.last_move):
-                                # Backup state.
-                                backup_start = self.game.board[r][c]
-                                backup_end = self.game.board[r2][c2]
-                                orig_white_king = self.game.white_king_pos
-                                orig_black_king = self.game.black_king_pos
-
-                                # Make the move temporarily.
-                                self.game.board[r2][c2] = piece
-                                self.game.board[r][c] = None
-                                if isinstance(piece, King):
-                                    if color == 'white':
-                                        self.game.white_king_pos = (r2, c2)
-                                    else:
-                                        self.game.black_king_pos = (r2, c2)
-                                in_check = self.game.is_check(color)
-                                # Revert move.
-                                self.game.board[r][c] = backup_start
-                                self.game.board[r2][c2] = backup_end
-                                self.game.white_king_pos = orig_white_king
-                                self.game.black_king_pos = orig_black_king
-                                if not in_check:
-                                    return False
+        # Check if opposite player is in
+        if self.is_stalemate(self.turn):
+            self.game_over = True
+    
+        print(f"Move successful: {start} to {end} by {self.turn}")
         return True
 
     def restart_game(self):
         """
         Restarts the game by reinitializing the underlying Game class.
         """
-        self.game = Game()
+        self.__init__()
 
     def quit_game(self):
         """
         Quits the game by flagging it as over.
         (Your Flask API can interpret this flag to stop accepting moves.)
         """
-        self.game.game_over = True
+        self.game_over = True
+
+
+if __name__ == "__main__":
+     game = LocalGame()
+     game.play()
