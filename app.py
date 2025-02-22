@@ -33,6 +33,14 @@ def make_move():
         return jsonify(response)
     return jsonify({'status': 'invalid move'})
 
+@app.route('/get_possible_moves', methods=['POST'])
+def get_possible_moves():
+    data = request.json
+    start = tuple(data.get('start'))
+    current_color = game.turn  # 获取当前玩家的回合颜色
+    moves = game.check_valid_moves(start, game.board)  # 只传递 3 个参数
+    return jsonify({'moves': moves})
+
 @app.route('/restart', methods=['POST'])
 def restart():
     game.restart_game()

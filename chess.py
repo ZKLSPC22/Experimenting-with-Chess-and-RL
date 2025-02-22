@@ -278,6 +278,44 @@ class Game:
         self.black_king_pos = None
         self.setup_pieces()
 
+    def check_valid_moves(self, start, board):
+        piece = board[start[0]][start[1]]
+        if not isinstance(piece, Piece):
+            return []
+        
+        valid_moves = []
+        for i in range(8):
+            for j in range(8):
+                end = (i, j)
+                print(f"checking move from {start} to {end}")
+                last_move = self.last_move
+                if piece.is_valid_move(start, end, board, last_move):
+                    # 检查移动后是否会使国王处于被将军状态
+                    temp_board = copy.deepcopy(board)
+                    temp_board[end[0]][end[1]] = piece
+                    temp_board[start[0]][start[1]] = None
+                    if not self.is_check(piece.color, temp_board):
+                        valid_moves.append(end)
+        
+        return valid_moves
+
+    def all_valid_moves(self, color, board):
+        color = color.replace(" ", "").lower
+        if color not in ["white", "black"]:
+            raise ValueError("Color must be 'black' or 'white'.")
+        
+        valid_moves = []
+        for i in range(8):
+            for j in range(8):
+                start = (i,j)
+                piece = board[start[0]][start[1]]
+                if not isinstance(piece,Piece) or piece.color != color:
+                    continue
+                valid_moves.extend(self.check_valid_moves(start, board))
+        
+        return valid_moves
+
+
     def create_board(self):
         # Create an 8x8 board initialized with None.
         return [[None for _ in range(8)] for _ in range(8)]
@@ -575,6 +613,9 @@ class LocalGame(Game):
 
 
 class RemoteGame(Game):
+    def __init__(self):
+        super().__init__()
+
     def make_move(self, start, end):
         """
         Attempts to make a move from 'start' to 'end'.

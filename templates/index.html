@@ -55,18 +55,26 @@
       border-radius: 5px;
     }
     .square {
-      width: 100%;
-      height: 100%;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      font-size: 2em; /* Adjust font size for chess icons */
+        width: 100%;
+        height: 100%;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        font-size: 2em; /* Adjust font size for chess icons */
+        transition: background-color 0.3s; /* 添加过渡效果 */
     }
+
     .dark {
-      background-color: #7a7a6d; /* Muted dark green */
+        background-color: #7a7a6d; /* Muted dark green */
     }
+
     .light {
-      background-color: #dcd9b6; /* Muted light beige */
+        background-color: #dcd9b6; /* Muted light beige */
+    }
+
+    /* 添加高亮显示的样式 */
+    .highlight {
+        background-color: yellow !important;
     }
   </style>
 </head>
@@ -168,21 +176,84 @@
     };
   
     let selectedSquare = null;
-    const squares = document.querySelectorAll('.square');
-  
+    let selectedSquareElement = null; // Track the selected square's DOM element
+    let squares = [];
+    
     // Convert a square's index (0-63) to board coordinates [row, col].
     function getCoordinatesFromIndex(index) {
-      const row = Math.floor(index / 8);
-      const col = index % 8;
-      return [row, col];
+        const row = Math.floor(index / 8);
+        const col = index % 8;
+        return [row, col];
     }
-  
+
+    function getIndexFromCoordinates(coords) {
+        const [row, col] = coords;
+        return row * 8 + col;
+    }
+    
+    async function handleSquareClick(event) {
+        const squareIndex = Array.from(squares).indexOf(event.target);
+        if (squareIndex === -1) return;
+
+        const coords = getCoordinatesFromIndex(squareIndex);
+
+        if (!selectedSquare) {
+            // First click: select piece
+            const piece = getPieceAt(coords);
+            if (piece) {
+                // Clear any existing selection first
+                if (selectedSquareElement) {
+                    selectedSquareElement.style.border = '';
+                }
+                
+                selectedSquare = coords;
+                selectedSquareElement = event.target;
+                event.target.style.border = '2px solid red';
+                await highlightValidMoves(coords);
+            }
+        } else {
+            // Second click: attempt move
+            const start = selectedSquare;
+            const end = coords;
+            
+            // Clear highlights and selection immediately
+            clearSquareHighlights();
+            if (selectedSquareElement) {
+                selectedSquareElement.style.border = '';
+            }
+            selectedSquare = null;
+            selectedSquareElement = null;
+
+            try {
+                const response = await fetch('/move', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ start: start, end: end })
+                });
+                const data = await response.json();
+                if (data.status === 'success') {
+                    updateBoard();
+                    handleGameEnd(data);
+                } else {
+                    alert('Invalid move!');
+                    // Re-enable selection if move failed
+                    await updateBoard();
+                }
+            } catch (error) {
+                console.error('Error making move:', error);
+                await updateBoard();
+            }
+        }
+    }
+
+    let Board = [];
+
     // Fetch the board state from the server and update the display.
     async function updateBoard() {
         try {
             const response = await fetch('/board');
             const data = await response.json();
-            const board = data.board;
+            board = data.board;
             console.log('Board state from server:', board);  // 调试信息
             squares.forEach((square, index) => {
                 const [row, col] = getCoordinatesFromIndex(index);
@@ -200,11 +271,6 @@
         }
     }
   
-    // Clear any highlight borders on squares.
-    function clearSquareHighlights() {
-      squares.forEach(square => square.style.border = '');
-    }
-  
     function handleGameEnd(response) {
       if (response.game_over) {
         if (response.message.includes('Checkmate')) {
@@ -217,40 +283,46 @@
       }
     }
 
-    // Handle click events on squares.
-    function handleSquareClick(event) {
-        const squareIndex = Array.from(squares).indexOf(event.target);
-        const coords = getCoordinatesFromIndex(squareIndex);
+    // Highlight valid moves and disable invalid squares.
 
-        if (!selectedSquare) {
-            // 第一次点击：选择方格。
-            selectedSquare = coords;
-            event.target.style.border = '2px solid red';
-        } else {
-            // 第二次点击：尝试移动。
-            const start = selectedSquare;
-            const end = coords;
-            clearSquareHighlights();
-            selectedSquare = null;
+    function clearSquareHighlights() {
+        squares.forEach(square => {
+            // Do not clear the selected square's border
+            if (square !== selectedSquareElement) {
+                square.style.border = '';
+            }
+            square.classList.remove('highlight');
+        });
+    }
 
-            fetch('/move', {
+    async function highlightValidMoves(start) {
+        try {
+            const response = await fetch('/get_possible_moves', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ start: start, end: end })
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.status === 'success') {
-                    updateBoard();
-                    handleGameEnd(data);
-                } else {
-                    alert('Invalid move!');
+                body: JSON.stringify({ start: start })
+            });
+            if (!response.ok) throw new Error('Network response was not ok');
+            const data = await response.json();
+            console.log('Possible moves from', start, ':', data.moves);
+            
+            data.moves.forEach(move => {
+                const index = getIndexFromCoordinates(move);
+                const square = document.getElementById(`square-${index}`);
+                if (square) {
+                    square.classList.add('highlight');
                 }
-            })
-            .catch(error => console.error('Error making move:', error));
+            });
+        } catch (error) {
+            console.error('Error getting possible moves:', error);
         }
     }
-  
+
+    function getPieceAt(coords) {
+        const [row, col] = coords;
+        return board[row][col] && board[row][col] !== '.' ? board[row][col] : null;
+    }
+
     // Attach click event listeners to each square.
     squares.forEach(square => {
       square.addEventListener('click', handleSquareClick);
@@ -280,7 +352,30 @@
         })
         .catch(error => console.error('Error quitting game:', error));
     });
-  
+    
+    document.addEventListener('DOMContentLoaded', () => {
+        const chessBoard = document.getElementById('chess-board');
+        chessBoard.innerHTML = ''; // Clear any existing squares
+
+        for (let i = 0; i < 64; i++) {
+            const square = document.createElement('div');
+            const row = Math.floor(i / 8);
+            const col = i % 8;
+            // Alternate classes based on position
+            const isLight = (row + col) % 2 === 0;
+            square.className = isLight ? 'square light' : 'square dark';
+            square.id = `square-${i}`;
+            chessBoard.appendChild(square);
+        }
+
+        squares = document.querySelectorAll('.square');
+        squares.forEach(square => {
+            square.addEventListener('click', handleSquareClick);
+        });
+
+        updateBoard(); // Initial board setup
+    });
+
     // Initial board update when page loads.
     updateBoard();
   </script>    
