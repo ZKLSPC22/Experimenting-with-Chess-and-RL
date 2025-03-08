@@ -1,18 +1,20 @@
-// Mapping of chess piece letters to Unicode chess icons.
+function convertIndex(index, color) {
+    return color === 'white'? index : 63 - index;
+}
+
 const pieceIcons = {
-'P': '♙', 'p': '♟',
-'R': '♖', 'r': '♜',
-'N': '♘', 'n': '♞',
-'B': '♗', 'b': '♝',
-'Q': '♕', 'q': '♛',
-'K': '♔', 'k': '♚'
+    'P': '♙', 'p': '♟',
+    'R': '♖', 'r': '♜',
+    'N': '♘', 'n': '♞',
+    'B': '♗', 'b': '♝',
+    'Q': '♕', 'q': '♛',
+    'K': '♔', 'k': '♚'
 };
 
 let selectedSquare = null;
 let selectedSquareElement = null; // Track the selected square's DOM element
 let squares = [];
 
-// Convert a square's index (0-63) to board coordinates [row, col].
 function getCoordinatesFromIndex(index) {
     const row = Math.floor(index / 8);
     const col = index % 8;
@@ -25,9 +27,10 @@ function getIndexFromCoordinates(coords) {
 }
 
 async function handleSquareClick(event) {
-    const squareIndex = Array.from(squares).indexOf(event.target);
+    var squareIndex = Array.from(squares).indexOf(event.target);
     if (squareIndex === -1) return;
 
+    squareIndex = convertIndex(squareIndex, bottomColor);
     const coords = getCoordinatesFromIndex(squareIndex);
 
     if (!selectedSquare) {
@@ -89,6 +92,7 @@ async function updateBoard() {
         board = data.board;
         console.log('Board state from server:', board);  // 调试信息
         squares.forEach((square, index) => {
+            index = convertIndex(index, bottomColor);
             const [row, col] = getCoordinatesFromIndex(index);
             const piece = board[row][col];
             if (piece === '.' || piece === '') {
@@ -140,7 +144,8 @@ async function highlightValidMoves(start) {
         console.log('Possible moves from', start, ':', data.moves);
         
         data.moves.forEach(move => {
-            const index = getIndexFromCoordinates(move);
+            var index = getIndexFromCoordinates(move);
+            index = convertIndex(index, bottomColor);
             const square = document.getElementById(`square-${index}`);
             if (square) {
                 square.classList.add('highlight');
@@ -166,10 +171,13 @@ document.getElementById('restart-btn').addEventListener('click', () => {
 fetch('/restart', { method: 'POST' })
     .then(response => response.json())
     .then(data => {
-    alert(data.message);
-    updateBoard();
-    // Reattach click listeners if they were removed.
-    squares.forEach(square => square.addEventListener('click', handleSquareClick));
+        alert(data.message);
+        if (data.bottom_color) {
+            window.bottomColor = data.bottom_color;  // Update here
+        }
+        updateBoard();
+        // Reattach click listeners if they were removed.
+        squares.forEach(square => square.addEventListener('click', handleSquareClick));
     })
     .catch(error => console.error('Error restarting game:', error));
 });

@@ -7,6 +7,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@700&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="{{ url_for('static', filename='css/chess.css') }}">
   <script src="{{ url_for('static', filename='js/chess.js') }}" defer></script>
+  <script>window.bottomColor = {{ bottom_color|tojson|safe }};</script>
 </head>
 <body>
   <h1>CHESS</h1>
@@ -19,78 +20,12 @@
   
   <div class="chessboard-container">
     <div class="chess-board" id="chess-board">
-      <!-- 64 squares for chessboard -->
-      <div class="square light"></div>
-      <div class="square dark"></div>
-      <div class="square light"></div>
-      <div class="square dark"></div>
-      <div class="square light"></div>
-      <div class="square dark"></div>
-      <div class="square light"></div>
-      <div class="square dark"></div>
-      
-      <div class="square dark"></div>
-      <div class="square light"></div>
-      <div class="square dark"></div>
-      <div class="square light"></div>
-      <div class="square dark"></div>
-      <div class="square light"></div>
-      <div class="square dark"></div>
-      <div class="square light"></div>
-  
-      <div class="square light"></div>
-      <div class="square dark"></div>
-      <div class="square light"></div>
-      <div class="square dark"></div>
-      <div class="square light"></div>
-      <div class="square dark"></div>
-      <div class="square light"></div>
-      <div class="square dark"></div>
-  
-      <div class="square dark"></div>
-      <div class="square light"></div>
-      <div class="square dark"></div>
-      <div class="square light"></div>
-      <div class="square dark"></div>
-      <div class="square light"></div>
-      <div class="square dark"></div>
-      <div class="square light"></div>
-  
-      <div class="square light"></div>
-      <div class="square dark"></div>
-      <div class="square light"></div>
-      <div class="square dark"></div>
-      <div class="square light"></div>
-      <div class="square dark"></div>
-      <div class="square light"></div>
-      <div class="square dark"></div>
-  
-      <div class="square dark"></div>
-      <div class="square light"></div>
-      <div class="square dark"></div>
-      <div class="square light"></div>
-      <div class="square dark"></div>
-      <div class="square light"></div>
-      <div class="square dark"></div>
-      <div class="square light"></div>
-  
-      <div class="square light"></div>
-      <div class="square dark"></div>
-      <div class="square light"></div>
-      <div class="square dark"></div>
-      <div class="square light"></div>
-      <div class="square dark"></div>
-      <div class="square light"></div>
-      <div class="square dark"></div>
-  
-      <div class="square dark"></div>
-      <div class="square light"></div>
-      <div class="square dark"></div>
-      <div class="square light"></div>
-      <div class="square dark"></div>
-      <div class="square light"></div>
-      <div class="square dark"></div>
-      <div class="square light"></div>
+      {% for row in range(8) %}
+          {% for col in range(8) %}
+              {% set color = "light" if (row + col) % 2 == 0 else "dark" %}
+              <div class="square {{ color }}"></div>
+          {% endfor %}
+      {% endfor %}
     </div>
   </div>
 </body>

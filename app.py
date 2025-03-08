@@ -6,7 +6,7 @@ game = RemoteGame()  # 实例化国际象棋游戏
 
 @app.route('/')
 def home():
-    return render_template('chess.html')
+    return render_template('chess.html', bottom_color=game.bottom_color)
 
 @app.route('/board')
 def get_board():
@@ -44,7 +44,9 @@ def get_possible_moves():
 @app.route('/restart', methods=['POST'])
 def restart():
     game.restart_game()
-    return jsonify({'status': 'success', 'message': 'Game restarted!'})
+    return jsonify({'status': 'success',
+                    'message': 'Game restarted!',
+                    'bottom_color': game.bottom_color})
 
 @app.route('/quit', methods=['POST'])
 def quit():

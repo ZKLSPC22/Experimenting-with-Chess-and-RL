@@ -1,4 +1,5 @@
 import copy
+import random
 
 
 class Piece:
@@ -271,6 +272,7 @@ class Game:
     def __init__(self):
         self.board = self.create_board()
         self.backup_board = copy.deepcopy(self.board)
+        self.bottom_color = random.choice(['white', 'black'])
         self.turn = 'white'  # White moves first.
         self.game_over = False
         self.last_move = None  # Stores the last move for en passant.
@@ -679,6 +681,7 @@ class RemoteGame(Game):
         """
         Restarts the game by reinitializing the underlying Game class.
         """
+        print(self.bottom_color)
         self.__init__()
 
     def quit_game(self):
