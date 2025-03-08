@@ -6,7 +6,7 @@ game = RemoteGame()  # 实例化国际象棋游戏
 
 @app.route('/')
 def home():
-    return render_template('index.html')
+    return render_template('chess.html')
 
 @app.route('/board')
 def get_board():

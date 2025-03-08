@@ -1,0 +1,73 @@
+* {
+    box-sizing: border-box; /* Ensure padding and borders do not affect the size */
+}
+
+body {
+    background-color: #2a2e33; /* muted dark grey with green tint */
+    color: white;
+    font-family: 'Roboto', sans-serif;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+h1 {
+    color: lightgrey;
+    font-size: 4em;
+    margin-top: 30px;
+}
+
+.controls button {
+    margin: 0 10px;
+    padding: 10px 20px;
+    font-size: 1em;
+    cursor: pointer;
+}
+
+.chessboard-container {
+    width: 450px; /* Slightly larger than the chessboard */
+    height: 450px; /* Slightly larger than the chessboard */
+    background-color: #444; /* Dark grey box */
+    margin-top: 20px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    border-radius: 10px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.5);
+}
+
+.chess-board {
+    width: 97%; /* Make sure board fills the container */
+    height: 97%; /* Make sure board fills the container */
+    background-color: #333;
+    display: grid;
+    grid-template-columns: repeat(8, 1fr); /* 8 columns */
+    grid-template-rows: repeat(8, 1fr);    /* 8 rows */
+    gap: 1px; /* Slight gap between squares */
+    border-radius: 5px;
+}
+
+.square {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    font-size: 2em; /* Adjust font size for chess icons */
+    transition: background-color 0.3s; /* 添加过渡效果 */
+}
+
+.dark {
+    background-color: #7a7a6d; /* Muted dark green */
+}
+
+.light {
+    background-color: #dcd9b6; /* Muted light beige */
+}
+
+/* 添加高亮显示的样式 */
+.highlight {
+    background-color: yellow !important;
+}

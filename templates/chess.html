@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CHESS</title>
+  <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/chess.css') }}">
+  <script src="{{ url_for('static', filename='js/chess.js') }}" defer></script>
+</head>
+<body>
+  <h1>CHESS</h1>
+  
+  <!-- Control buttons for Restart and Quit -->
+  <div class="controls">
+    <button id="restart-btn">Restart Game</button>
+    <button id="quit-btn">Quit Game</button>
+  </div>
+  
+  <div class="chessboard-container">
+    <div class="chess-board" id="chess-board">
+      <!-- 64 squares for chessboard -->
+      <div class="square light"></div>
+      <div class="square dark"></div>
+      <div class="square light"></div>
+      <div class="square dark"></div>
+      <div class="square light"></div>
+      <div class="square dark"></div>
+      <div class="square light"></div>
+      <div class="square dark"></div>
+      
+      <div class="square dark"></div>
+      <div class="square light"></div>
+      <div class="square dark"></div>
+      <div class="square light"></div>
+      <div class="square dark"></div>
+      <div class="square light"></div>
+      <div class="square dark"></div>
+      <div class="square light"></div>
+  
+      <div class="square light"></div>
+      <div class="square dark"></div>
+      <div class="square light"></div>
+      <div class="square dark"></div>
+      <div class="square light"></div>
+      <div class="square dark"></div>
+      <div class="square light"></div>
+      <div class="square dark"></div>
+  
+      <div class="square dark"></div>
+      <div class="square light"></div>
+      <div class="square dark"></div>
+      <div class="square light"></div>
+      <div class="square dark"></div>
+      <div class="square light"></div>
+      <div class="square dark"></div>
+      <div class="square light"></div>
+  
+      <div class="square light"></div>
+      <div class="square dark"></div>
+      <div class="square light"></div>
+      <div class="square dark"></div>
+      <div class="square light"></div>
+      <div class="square dark"></div>
+      <div class="square light"></div>
+      <div class="square dark"></div>
+  
+      <div class="square dark"></div>
+      <div class="square light"></div>
+      <div class="square dark"></div>
+      <div class="square light"></div>
+      <div class="square dark"></div>
+      <div class="square light"></div>
+      <div class="square dark"></div>
+      <div class="square light"></div>
+  
+      <div class="square light"></div>
+      <div class="square dark"></div>
+      <div class="square light"></div>
+      <div class="square dark"></div>
+      <div class="square light"></div>
+      <div class="square dark"></div>
+      <div class="square light"></div>
+      <div class="square dark"></div>
+  
+      <div class="square dark"></div>
+      <div class="square light"></div>
+      <div class="square dark"></div>
+      <div class="square light"></div>
+      <div class="square dark"></div>
+      <div class="square light"></div>
+      <div class="square dark"></div>
+      <div class="square light"></div>
+    </div>
+  </div>
+</body>
+</html>
