@@ -221,9 +221,6 @@ class King(Piece):
             # Cannot capture your own piece.
             if board[r2][c2] is not None and board[r2][c2].color == self.color:
                 return False
-            # Check that the destination square is not under attack.
-            if self.is_under_attack(end, board):
-                return False
             return True
 
         # Castling.
@@ -237,7 +234,6 @@ class King(Piece):
                     c2 == 6 
                     and board[r2][5] is None 
                     and board[r2][6] is None 
-                    and not self.is_under_attack(end, board)
                 ):  # Kingside
                     return True
                 if (
@@ -245,23 +241,8 @@ class King(Piece):
                     and board[r2][1] is None 
                     and board[r2][2] is None 
                     and board[r2][3] is None
-                    and not self.is_under_attack(end, board)
                 ):  # Queenside
                     return True
-                if self.is_under_attack(end, board):
-                    return False
-
-        return False
-
-    def is_under_attack(self, square, board):
-        # Check if any opponent piece can move to the given square.
-        for r in range(8):
-            for c in range(8):
-                piece = board[r][c]
-                if piece is not None and piece.color != self.color and not isinstance(piece, King):
-                    # When checking for attacks, we do not pass last_move.
-                    if piece.is_valid_move((r, c), square, board):
-                        return True
         return False
 
     def move(self, start, end):
@@ -292,13 +273,14 @@ class Game:
                 print(f"checking move from {start} to {end}")
                 last_move = self.last_move
                 if piece.is_valid_move(start, end, board, last_move):
-                    # 检查移动后是否会使国王处于被将军状态
                     temp_board = copy.deepcopy(board)
+                    # make move on temp board
                     temp_board[end[0]][end[1]] = piece
                     temp_board[start[0]][start[1]] = None
                     if not self.is_check(piece.color, temp_board):
                         valid_moves.append(end)
         
+        print(f"valid moves: {valid_moves}")
         return valid_moves
 
     def all_valid_moves(self, color, board):
@@ -414,7 +396,10 @@ class Game:
 
     def is_check(self, color, board):
         # Check if the king of the given color is under attack.
-        king_pos = self.white_king_pos if color == 'white' else self.black_king_pos
+        king_pos = self.find_king(color, board)
+        if king_pos is None:
+            return False
+        
         opponent_color = 'black' if color == 'white' else 'white'
         for r in range(8):
             for c in range(8):
@@ -424,6 +409,14 @@ class Game:
                         return True
         return False
     
+    def find_king(self, color, board):
+        for r in range(8):
+            for c in range(8):
+                piece = board[r][c]
+                if isinstance(piece, King) and piece.color == color:
+                    return (r, c)
+        return None
+
     def no_piece_can_move(self, color, board):
         for r in range(8):
             for c in range(8):

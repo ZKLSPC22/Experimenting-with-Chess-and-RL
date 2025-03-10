@@ -169,6 +169,14 @@ async function handleSquareClick(event) {
     }
 }
 
+function clearSquareSelection() {
+    if (selectedSquareElement) {
+        selectedSquareElement.style.border = '';
+    }
+    selectedSquare = null;
+    selectedSquareElement = null;
+}
+
 
 // UI Controls & Event Handlers
 function setupBotToggle() {
@@ -187,17 +195,11 @@ document.getElementById('restart-btn').addEventListener('click', () => {
         .then(response => response.json())
         .then(data => {
             alert(data.message);
+            clearSquareHighlights();
+            clearSquareSelection();
             updateBoard();
-            squares.forEach(square => square.addEventListener('click', handleSquareClick));
         })
         .catch(error => console.error('Error restarting game:', error));
-});
-
-document.getElementById('quit-btn').addEventListener('click', () => {
-    fetch('/quit', { method: 'POST' })
-        .then(() => {
-            squares.forEach(square => square.removeEventListener('click', handleSquareClick));
-        }).catch(console.error);
 });
 
 
