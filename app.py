@@ -6,11 +6,15 @@ game = RemoteGame()  # 实例化国际象棋游戏
 
 @app.route('/')
 def home():
-    return render_template('chess.html', bottom_color=game.bottom_color)
+    return render_template('chess.html',
+                           bottom_color=game.bottom_color,
+                           turn_color=game.turn)
 
 @app.route('/board')
 def get_board():
-    return jsonify({'board': game.get_board()})
+    return jsonify({'board': game.get_board(), 
+                    'turn_color': game.turn, 
+                    'bottom_color': game.bottom_color})
 
 @app.route('/bot-mode', methods=['POST'])
 def bot_mode():
@@ -28,7 +32,8 @@ def make_move():
     if game.make_move(start, end):
         response = {
             'status': 'success',
-            'board': game.get_board()
+            'board': game.get_board(),
+            'turn_color': game.turn
         }
         if game.game_over:
             if game.is_checkmate(game.turn):
@@ -43,18 +48,25 @@ def make_move():
 
 @app.route('/get_possible_moves', methods=['POST'])
 def get_possible_moves():
-    data = request.json
-    start = tuple(data.get('start'))
-    current_color = game.turn  # 获取当前玩家的回合颜色
-    moves = game.check_valid_moves(start, game.board)  # 只传递 3 个参数
-    return jsonify({'moves': moves})
+    try:
+        data = request.json
+        start = tuple(data.get('start'))
+        moves = game.check_valid_moves(start, game.board)
+        return jsonify({'moves': moves})
+    except Exception as e:
+        app.logger.error("Error in /get_possible_moves: %s", e)
+        return jsonify({'error': str(e)}), 500
 
 @app.route('/restart', methods=['POST'])
 def restart():
     game.restart_game()
-    return jsonify({'status': 'success',
-                    'message': 'Game restarted!',
-                    'bottom_color': game.bottom_color})
+    return jsonify({
+        'status': 'success',
+        'message': 'Game restarted!',
+        'board': game.get_board(),          # Add board here if needed
+        'bottom_color': game.bottom_color,
+        'turn_color': game.turn
+    })
 
 @app.route('/quit', methods=['POST'])
 def quit():

@@ -8,6 +8,7 @@
   <link rel="stylesheet" href="{{ url_for('static', filename='css/chess.css') }}">
   <script src="{{ url_for('static', filename='js/chess.js') }}" defer></script>
   <script>window.bottomColor = {{ bottom_color|tojson|safe }};</script>
+  <script>window.turnColor = {{ turn_color|tojson|safe }};</script>
 </head>
 <body>
   <h1>CHESS</h1>

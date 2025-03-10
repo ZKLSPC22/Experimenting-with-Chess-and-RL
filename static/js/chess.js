@@ -14,9 +14,10 @@ let board = [];
 let selectedSquare = null;
 let selectedSquareElement = null;
 let squares = [];
+let botEnabled = false;
 
 
-// Coordinate Conversion Helpers
+// Coordinate Conversion Helpers, backend coordinates aligns with white pieces
 function convertIndex(index, color) {
     return color === 'white' ? index : 63 - index;
 }
@@ -39,7 +40,7 @@ async function updateBoard() {
         const response = await fetch('/board');
         const data = await response.json();
         board = data.board;
-        
+        turnColor = data.turn_color;
         squares.forEach((square, index) => {
             index = convertIndex(index, bottomColor);
             const [row, col] = getCoordinatesFromIndex(index);
@@ -98,8 +99,8 @@ async function highlightValidMoves(start) {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ start: start })
         });
-        
         const data = await response.json();
+        console.log("Possible moves returned:", data.moves);
         data.moves.forEach(move => {
             let index = getIndexFromCoordinates(move);
             index = convertIndex(index, bottomColor);
@@ -127,6 +128,12 @@ async function handleSquareClick(event) {
     if (!selectedSquare) {
         const piece = getPieceAt(coords);
         if (piece) {
+            if (turnColor === 'white' && piece !== piece.toUpperCase()) return;
+            if (turnColor === 'black' && piece !== piece.toLowerCase()) return;
+            if (botEnabled) {
+                if (bottomColor === 'white' && piece === piece.toLowerCase()) return;
+                if (bottomColor === 'black' && piece === piece.toUpperCase()) return;
+            }
             clearSquareHighlights();
             selectedSquare = coords;
             selectedSquareElement = event.target;
@@ -166,6 +173,7 @@ async function handleSquareClick(event) {
 // UI Controls & Event Handlers
 function setupBotToggle() {
     document.getElementById('bot-toggle').addEventListener('change', function() {
+        botEnabled = this.checked;
         fetch('/bot-mode', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
@@ -176,10 +184,13 @@ function setupBotToggle() {
 
 document.getElementById('restart-btn').addEventListener('click', () => {
     fetch('/restart', { method: 'POST' })
-        .then(() => {
+        .then(response => response.json())
+        .then(data => {
+            alert(data.message);
             updateBoard();
             squares.forEach(square => square.addEventListener('click', handleSquareClick));
-        }).catch(console.error);
+        })
+        .catch(error => console.error('Error restarting game:', error));
 });
 
 document.getElementById('quit-btn').addEventListener('click', () => {

@@ -258,7 +258,7 @@ class King(Piece):
         for r in range(8):
             for c in range(8):
                 piece = board[r][c]
-                if piece is not None and piece.color != self.color:
+                if piece is not None and piece.color != self.color and not isinstance(piece, King):
                     # When checking for attacks, we do not pass last_move.
                     if piece.is_valid_move((r, c), square, board):
                         return True
