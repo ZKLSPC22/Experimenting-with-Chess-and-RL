@@ -12,6 +12,14 @@ def home():
 def get_board():
     return jsonify({'board': game.get_board()})
 
+@app.route('/bot-mode', methods=['POST'])
+def bot_mode():
+    data = request.get_json()
+    if data and 'bot_enabled' in data:
+        game.bot_enabled = bool(data['bot_enabled'])
+        return jsonify(success=True)
+    return jsonify(success=False), 400
+
 @app.route('/move', methods=['POST'])
 def make_move():
     data = request.json

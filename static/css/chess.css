@@ -26,6 +26,20 @@ h1 {
     cursor: pointer;
 }
 
+
+.ais {
+    display: flex;
+    align-items: center;
+    margin-top: 20px;
+}
+
+.ais button {
+    margin: 10px;
+    padding: 10px 20px;
+    font-size: 1em;
+    cursor: pointer;
+}
+
 .chessboard-container {
     width: 450px; /* Slightly larger than the chessboard */
     height: 450px; /* Slightly larger than the chessboard */

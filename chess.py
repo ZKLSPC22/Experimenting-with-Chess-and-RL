@@ -617,6 +617,8 @@ class LocalGame(Game):
 class RemoteGame(Game):
     def __init__(self):
         super().__init__()
+        self.bot_enabled = False
+        self.ai_color = 'white' if self.bottom_color == 'black' else 'black'
 
     def make_move(self, start, end):
         """
