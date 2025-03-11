@@ -1,31 +1,63 @@
 from flask import Flask, render_template, request, jsonify
 from chess import RemoteGame  # 确保路径正确
+from chess_bots import *
 
 app = Flask(__name__)
 game = RemoteGame()  # 实例化国际象棋游戏
+bot = bot1.get_bot_move
+
+def maybe_bot_move():
+    print("maybe_bot_move")
+    print(f"ai color is {game.ai_color}")
+    print(f"game.bot_enabled: {game.bot_enabled}, game.game_over: {not game.game_over}, game.turn: {game.turn == game.ai_color}, game.ai_color: {game.ai_color}")
+    if game.bot_enabled and not game.game_over and game.turn == game.ai_color:
+        print(f"move = {bot(game)}")
+        move = bot(game)  # Returns (start, end)
+        if move:
+            start, end = move
+            print(f"Bot move: {start} -> {end}")
+            game.make_move(start, end)
+            game.display_board()
 
 @app.route('/')
 def home():
+    print("home====================")
+    maybe_bot_move()
     return render_template('chess.html',
                            bottom_color=game.bottom_color,
-                           turn_color=game.turn)
+                           turn_color=game.turn,
+                           ai_color=game.ai_color)
 
 @app.route('/board')
 def get_board():
+    print("get_board====================")
+    maybe_bot_move()
     return jsonify({'board': game.get_board(), 
                     'turn_color': game.turn, 
                     'bottom_color': game.bottom_color})
 
 @app.route('/bot-mode', methods=['POST'])
 def bot_mode():
+    print("bot_mode====================")
     data = request.get_json()
     if data and 'bot_enabled' in data:
+        print(f"bot_enabled: {bool(data['bot_enabled'])}")
         game.bot_enabled = bool(data['bot_enabled'])
-        return jsonify(success=True)
+        # If bot mode has just been toggled on and it's the bot's turn, let the bot move.
+        if game.bot_enabled and not game.game_over and game.turn == game.ai_color:
+            maybe_bot_move()
+        # Return updated board info after bot move (if any)
+        return jsonify({
+            'success': True,
+            'board': game.get_board(),
+            'turn_color': game.turn,
+            'bottom_color': game.bottom_color
+        })
     return jsonify(success=False), 400
 
 @app.route('/move', methods=['POST'])
 def make_move():
+    print("make_move====================")
     data = request.json
     start = tuple(data.get('start'))
     end = tuple(data.get('end'))
@@ -48,6 +80,7 @@ def make_move():
 
 @app.route('/get_possible_moves', methods=['POST'])
 def get_possible_moves():
+    print("get_possible_moves====================")
     try:
         data = request.json
         start = tuple(data.get('start'))
@@ -59,7 +92,9 @@ def get_possible_moves():
 
 @app.route('/restart', methods=['POST'])
 def restart():
+    print("restart====================")
     game.restart_game()
+    maybe_bot_move()
     return jsonify({
         'status': 'success',
         'message': 'Game restarted!',

@@ -15,6 +15,7 @@ let selectedSquare = null;
 let selectedSquareElement = null;
 let squares = [];
 let botEnabled = false;
+const botColor = bottomColor
 
 
 // Coordinate Conversion Helpers, backend coordinates aligns with white pieces
@@ -187,6 +188,7 @@ function setupBotToggle() {
             headers: {'Content-Type': 'application/json'},
             body: JSON.stringify({bot_enabled: this.checked})
         }).catch(console.error);
+        updateBoard();
     });
 }
 
@@ -197,6 +199,10 @@ document.getElementById('restart-btn').addEventListener('click', () => {
             alert(data.message);
             clearSquareHighlights();
             clearSquareSelection();
+            const botToggleElem = document.getElementById('bot-toggle');
+            botToggleElem.checked = false;
+            botEnabled = false;
+            bottomColor = data.bottom_color;
             updateBoard();
         })
         .catch(error => console.error('Error restarting game:', error));

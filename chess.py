@@ -1,5 +1,6 @@
 import copy
 import random
+from chess_bots import *
 
 
 class Piece:
@@ -270,7 +271,6 @@ class Game:
         for i in range(8):
             for j in range(8):
                 end = (i, j)
-                print(f"checking move from {start} to {end}")
                 last_move = self.last_move
                 if piece.is_valid_move(start, end, board, last_move):
                     temp_board = copy.deepcopy(board)
@@ -280,13 +280,13 @@ class Game:
                     if not self.is_check(piece.color, temp_board):
                         valid_moves.append(end)
         
-        print(f"valid moves: {valid_moves}")
         return valid_moves
 
     def all_valid_moves(self, color, board):
-        color = color.replace(" ", "").lower
+        print("all_valid_moves")
+        color = color.replace(" ", "").lower()
         if color not in ["white", "black"]:
-            raise ValueError("Color must be 'black' or 'white'.")
+            raise ValueError(f"color is {color}, Color must be 'black' or 'white'.")
         
         valid_moves = []
         for i in range(8):
@@ -295,8 +295,11 @@ class Game:
                 piece = board[start[0]][start[1]]
                 if not isinstance(piece,Piece) or piece.color != color:
                     continue
-                valid_moves.extend(self.check_valid_moves(start, board))
+                valid_ends = self.check_valid_moves(start, board)
+                for end in valid_ends:
+                    valid_moves.append((start, end))
         
+        print(f"valid_moves: {valid_moves}")
         return valid_moves
 
 
@@ -364,7 +367,6 @@ class Game:
 
     # Handle pawn's en passant capture.
     def en_passant(self, start, end):
-        print("processing En Passant")
         piece = self.backup_board[end[0]][end[1]]
         captured_row = start[0]
         captured_col = end[1]
@@ -652,7 +654,6 @@ class RemoteGame(Game):
             print(f"{self.turn} is in check")
             self.backup_board = copy.deepcopy(self.board)
             return False
-        print("no check")
 
         # Stores last move for en passant
         self.last_move = (start, end)

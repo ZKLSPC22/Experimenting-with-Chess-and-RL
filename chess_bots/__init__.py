@@ -1,0 +1,1 @@
+__all__ = ['bot1', 'bot2']  # Optional: defines what 'from chess_bot import *' includes

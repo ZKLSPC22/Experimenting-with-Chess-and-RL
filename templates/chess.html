@@ -9,6 +9,7 @@
   <script src="{{ url_for('static', filename='js/chess.js') }}" defer></script>
   <script>window.bottomColor = {{ bottom_color|tojson|safe }};</script>
   <script>window.turnColor = {{ turn_color|tojson|safe }};</script>
+  <script>window.botColor = {{ ai_color|tojson|safe }};</script>
 </head>
 <body>
   <h1>CHESS</h1>
@@ -36,6 +37,8 @@
       </label>
     </div>
     <button id="random-bot-btn">Random Bot</button>
+    <button id="bot2">Bot2</button>
+    <button id="bot3">Bot3</button>
   </div>
 </body>
 </html>
