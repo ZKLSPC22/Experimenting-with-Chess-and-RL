@@ -11,8 +11,18 @@ def maybe_bot_move():
     print(f"ai color is {game.ai_color}")
     print(f"game.bot_enabled: {game.bot_enabled}, game.game_over: {not game.game_over}, game.turn: {game.turn == game.ai_color}, game.ai_color: {game.ai_color}")
     if game.bot_enabled and not game.game_over and game.turn == game.ai_color:
-        print(f"move = {bot(game)}")
-        move = bot(game)  # Returns (start, end)
+        move = None
+        # Get bot_enabled safely without relying on request data
+        bot_enabled = 'bot1'  # Default to bot1 if not from POST
+        if request.method == 'POST':
+            data = request.get_json()
+            bot_enabled = data.get('bot_enabled', 'bot1')
+        if bot_enabled == 'random':
+            move = random_bot.get_bot_move(game)
+        elif bot_enabled == 'bot1':
+            move = bot1.get_bot_move(game)
+        elif bot_enabled == 'bot2':
+            move = bot2.get_bot_move(game)
         if move:
             start, end = move
             print(f"Bot move: {start} -> {end}")
@@ -32,6 +42,7 @@ def home():
 def get_board():
     print("get_board====================")
     maybe_bot_move()
+    print(f'board: {game.get_board()} turn_color: {game.turn}, bottom_color: {game.bottom_color}')
     return jsonify({'board': game.get_board(), 
                     'turn_color': game.turn, 
                     'bottom_color': game.bottom_color})
@@ -41,11 +52,8 @@ def bot_mode():
     print("bot_mode====================")
     data = request.get_json()
     if data and 'bot_enabled' in data:
-        print(f"bot_enabled: {bool(data['bot_enabled'])}")
-        game.bot_enabled = bool(data['bot_enabled'])
-        # If bot mode has just been toggled on and it's the bot's turn, let the bot move.
-        if game.bot_enabled and not game.game_over and game.turn == game.ai_color:
-            maybe_bot_move()
+        game.bot_enabled = True
+        maybe_bot_move()
         # Return updated board info after bot move (if any)
         return jsonify({
             'success': True,

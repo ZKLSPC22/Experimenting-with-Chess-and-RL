@@ -14,7 +14,7 @@ let board = [];
 let selectedSquare = null;
 let selectedSquareElement = null;
 let squares = [];
-let botEnabled = false;
+let botEnabled = null;
 const botColor = bottomColor
 
 
@@ -37,26 +37,40 @@ function getIndexFromCoordinates(coords) {
 
 // Board Management
 async function updateBoard() {
+    console.log('Starting updateBoard function'); // Log when the function starts
     try {
+        console.log('Fetching board data from /board'); // Log before fetching board data
         const response = await fetch('/board');
+        console.log('Board data fetched, parsing JSON'); // Log after fetching, before parsing JSON
         const data = await response.json();
+        console.log('Board data parsed:', data); // Log the parsed data
+        console.log('Updating board variable'); // Log before updating the board variable
         board = data.board;
+        console.log('Updating turnColor variable:', data.turn_color); // Log before updating turnColor
         turnColor = data.turn_color;
+        console.log('Iterating over squares to update them'); // Log before iterating over squares
         squares.forEach((square, index) => {
+            console.log('Processing square at index:', index); // Log the current square index
             index = convertIndex(index, bottomColor);
+            console.log('Converted index:', index); // Log the converted index
             const [row, col] = getCoordinatesFromIndex(index);
+            console.log('Coordinates for square:', { row, col }); // Log the coordinates
             const piece = board[row][col];
-            
+            console.log('Piece at coordinates:', piece); // Log the piece at the coordinates
             square.textContent = (piece && piece !== '.') 
                 ? pieceIcons[piece] || piece 
                 : '';
+            console.log('Updated square text content:', square.textContent); // Log the updated text content
             square.style.color = piece && piece === piece.toLowerCase() 
                 ? 'black' 
                 : 'white';
+            console.log('Updated square color:', square.style.color); // Log the updated color
         });
+        console.log('Finished updating all squares'); // Log after all squares are updated
     } catch (error) {
-        console.error('Error updating board:', error);
+        console.error('Error updating board:', error); // Log any errors
     }
+    console.log('Finished updateBoard function'); // Log when the function ends
 }
 
 function initializeChessBoard() {
@@ -131,7 +145,7 @@ async function handleSquareClick(event) {
         if (piece) {
             if (turnColor === 'white' && piece !== piece.toUpperCase()) return;
             if (turnColor === 'black' && piece !== piece.toLowerCase()) return;
-            if (botEnabled) {
+            if (botEnabled != null) {
                 if (bottomColor === 'white' && piece === piece.toLowerCase()) return;
                 if (bottomColor === 'black' && piece === piece.toUpperCase()) return;
             }
@@ -157,14 +171,17 @@ async function handleSquareClick(event) {
             
             const data = await response.json();
             if (data.status === 'success') {
+                console.log('handleSquareClick updateBoard');
                 await updateBoard();
                 handleGameEnd(data);
             } else {
                 alert('Invalid move!');
+                console.log('handleSquareClick updateBoard');
                 await updateBoard();
             }
         } catch (error) {
             console.error('Move error:', error);
+            console.log('handleSquareClick updateBoard');
             await updateBoard();
         }
     }
@@ -187,10 +204,12 @@ function setupBotToggle() {
     botControls.addEventListener('change', (e) => {
         if (!e.target.matches('input[type="checkbox"]')) return;
         
-        // When a checkbox is checked, uncheck all others
+        const checkboxes = botControls.querySelectorAll('input[type="checkbox"]');
+        const checkedBot = e.target.checked ? e.target.value : null;
+
+        // Uncheck all others when a checkbox is checked
         if (e.target.checked) {
-            const allCheckboxes = botControls.querySelectorAll('input[type="checkbox"]');
-            allCheckboxes.forEach(checkbox => {
+            checkboxes.forEach(checkbox => {
                 if (checkbox !== e.target) checkbox.checked = false;
             });
         }
@@ -199,9 +218,9 @@ function setupBotToggle() {
         fetch('/bot-mode', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({bot_enabled: e.target.checked})
+            body: JSON.stringify({bot_enabled: checkedBot})
         }).catch(console.error);
-        
+        console.log('setupBotToggle updateBoard');
         updateBoard();
     });
 }
@@ -213,10 +232,11 @@ document.getElementById('restart-btn').addEventListener('click', () => {
             alert(data.message);
             clearSquareHighlights();
             clearSquareSelection();
-            const botToggleElem = document.getElementById('bot-toggle');
+            const botToggleElem = document.getElementById('bot-controls'); // this gives null, why?
             botToggleElem.checked = false;
-            botEnabled = false;
+            botEnabled = null;
             bottomColor = data.bottom_color;
+            console.log('restart-btn updateBoard');
             updateBoard();
         })
         .catch(error => console.error('Error restarting game:', error));
@@ -227,5 +247,6 @@ document.getElementById('restart-btn').addEventListener('click', () => {
 document.addEventListener('DOMContentLoaded', () => {
     initializeChessBoard();
     setupBotToggle();
+    console.log('DOM updateBoard');
     updateBoard();
 });
