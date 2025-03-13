@@ -181,13 +181,27 @@ function clearSquareSelection() {
 
 // UI Controls & Event Handlers
 function setupBotToggle() {
-    document.getElementById('bot-toggle').addEventListener('change', function() {
-        botEnabled = this.checked;
+    const botControls = document.getElementById('bot-controls');
+    
+    // Handle ALL checkbox changes in the container
+    botControls.addEventListener('change', (e) => {
+        if (!e.target.matches('input[type="checkbox"]')) return;
+        
+        // When a checkbox is checked, uncheck all others
+        if (e.target.checked) {
+            const allCheckboxes = botControls.querySelectorAll('input[type="checkbox"]');
+            allCheckboxes.forEach(checkbox => {
+                if (checkbox !== e.target) checkbox.checked = false;
+            });
+        }
+        
+        // Your existing API call
         fetch('/bot-mode', {
             method: 'POST',
             headers: {'Content-Type': 'application/json'},
-            body: JSON.stringify({bot_enabled: this.checked})
+            body: JSON.stringify({bot_enabled: e.target.checked})
         }).catch(console.error);
+        
         updateBoard();
     });
 }
