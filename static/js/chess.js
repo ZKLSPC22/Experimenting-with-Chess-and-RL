@@ -171,17 +171,36 @@ async function handleSquareClick(event) {
             
             const data = await response.json();
             if (data.status === 'success') {
-                console.log('handleSquareClick updateBoard');
                 await updateBoard();
-                handleGameEnd(data);
+                if (data.promotion_needed) {
+                    // 显示升变选择对话框
+                    const choice = await showPromotionDialog();
+                    if (choice) {
+                        // 发送升变选择
+                        const promotionResponse = await fetch('/promote', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ 
+                                start: start,
+                                end: end,
+                                piece_type: choice 
+                            })
+                        });
+                        const promotionData = await promotionResponse.json();
+                        if (promotionData.status === 'success') {
+                            await updateBoard();
+                            handleGameEnd(promotionData);
+                        }
+                    }
+                } else {
+                    handleGameEnd(data);
+                }
             } else {
                 alert('Invalid move!');
-                console.log('handleSquareClick updateBoard');
                 await updateBoard();
             }
         } catch (error) {
             console.error('Move error:', error);
-            console.log('handleSquareClick updateBoard');
             await updateBoard();
         }
     }
@@ -225,21 +244,55 @@ function setupBotToggle() {
     });
 }
 
-document.getElementById('restart-btn').addEventListener('click', () => {
-    fetch('/restart', { method: 'POST' })
-        .then(response => response.json())
-        .then(data => {
-            alert(data.message);
+document.getElementById('restart-btn').addEventListener('click', async () => {
+    try {
+        const response = await fetch('/restart', { method: 'POST' });
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            // 重置所有游戏状态
             clearSquareHighlights();
             clearSquareSelection();
-            const botToggleElem = document.getElementById('bot-controls'); // this gives null, why?
-            botToggleElem.checked = false;
+            selectedSquare = null;
+            selectedSquareElement = null;
+            
+            // 重新启用所有方格的点击事件
+            squares.forEach(square => {
+                square.removeEventListener('click', handleSquareClick);
+                square.addEventListener('click', handleSquareClick);
+            });
+            
+            // 重置机器人状态
+            const botCheckboxes = document.querySelectorAll('#bot-controls input[type="checkbox"]');
+            botCheckboxes.forEach(checkbox => checkbox.checked = false);
             botEnabled = null;
+            
+            // 更新游戏状态
             bottomColor = data.bottom_color;
-            console.log('restart-btn updateBoard');
-            updateBoard();
-        })
-        .catch(error => console.error('Error restarting game:', error));
+            turnColor = data.turn_color;
+            board = data.board;
+            
+            // 更新棋盘显示
+            squares.forEach((square, index) => {
+                index = convertIndex(index, bottomColor);
+                const [row, col] = getCoordinatesFromIndex(index);
+                const piece = board[row][col];
+                square.textContent = (piece && piece !== '.') 
+                    ? pieceIcons[piece] || piece 
+                    : '';
+                square.style.color = piece && piece === piece.toLowerCase() 
+                    ? 'black' 
+                    : 'white';
+            });
+            
+            alert(data.message);
+        } else {
+            throw new Error('Failed to restart game');
+        }
+    } catch (error) {
+        console.error('Error restarting game:', error);
+        alert('Failed to restart game. Please try again.');
+    }
 });
 
 
@@ -250,3 +303,71 @@ document.addEventListener('DOMContentLoaded', () => {
     console.log('DOM updateBoard');
     updateBoard();
 });
+
+// 添加升变选择对话框函数
+async function showPromotionDialog() {
+    // 创建对话框容器
+    const dialog = document.createElement('div');
+    dialog.style.cssText = `
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        background: white;
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+        z-index: 1000;
+    `;
+    dialog.innerHTML = `
+        <h3 style="margin-bottom: 15px;">选择升变棋子</h3>
+        <div style="display: flex; gap: 10px;">
+            <button class="promotion-btn" data-piece="Q">${pieceIcons['Q']}</button>
+            <button class="promotion-btn" data-piece="R">${pieceIcons['R']}</button>
+            <button class="promotion-btn" data-piece="B">${pieceIcons['B']}</button>
+            <button class="promotion-btn" data-piece="N">${pieceIcons['N']}</button>
+        </div>
+    `;
+
+    // 创建遮罩层
+    const overlay = document.createElement('div');
+    overlay.style.cssText = `
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(0,0,0,0.5);
+        z-index: 999;
+    `;
+
+    // 添加到文档
+    document.body.appendChild(overlay);
+    document.body.appendChild(dialog);
+
+    // 设置按钮样式
+    const buttons = dialog.querySelectorAll('.promotion-btn');
+    buttons.forEach(btn => {
+        btn.style.cssText = `
+            width: 50px;
+            height: 50px;
+            font-size: 30px;
+            border: 1px solid #ccc;
+            background: white;
+            cursor: pointer;
+            border-radius: 4px;
+        `;
+    });
+
+    // 返回Promise以等待用户选择
+    return new Promise(resolve => {
+        buttons.forEach(btn => {
+            btn.onclick = () => {
+                const piece = btn.dataset.piece;
+                document.body.removeChild(overlay);
+                document.body.removeChild(dialog);
+                resolve(piece);
+            };
+        });
+    });
+}

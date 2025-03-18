@@ -8,3 +8,7 @@ def get_bot_move(game):
             return None
         return move
     return None
+
+def handle_promotion():
+    """Handle the bot's pawn promotion"""
+    return random.choice(['Q', 'R', 'B', 'N'])  # Randomly choose a promotion piece

@@ -22,6 +22,10 @@ class Pawn(Piece):
     def __str__(self):
         return 'P' if self.color == 'white' else 'p'
 
+    def can_promote(self, end_pos):
+        r2, _ = end_pos
+        return (self.color == 'white' and r2 == 0) or (self.color == 'black' and r2 == 7)
+
     def is_valid_move(self, start, end, board, last_move=None):
         r1, c1 = start
         r2, c2 = end
@@ -179,7 +183,7 @@ class Queen(Piece):
             row_step = 1 if r2 > r1 else -1
             col_step = 1 if c2 > c1 else -1
             r, c = r1 + row_step, c1 + col_step
-            while r != r2 and c != c2:
+            while r != r2:  # Modify here: only check up to r2
                 if board[r][c] is not None:
                     return False
                 r += row_step
@@ -261,6 +265,39 @@ class Game:
         self.white_king_pos = None
         self.black_king_pos = None
         self.setup_pieces()
+
+    def promote_pawn(self, pos, piece_type):
+        """
+        Promote the pawn to the specified piece type
+        piece_type: 'Q' (Queen), 'R' (Rook), 'B' (Bishop), 'N' (Knight)
+        """
+        r, c = pos
+        pawn = self.board[r][c]
+        if not isinstance(pawn, Pawn):
+            return False
+        
+        piece_map = {
+            'Q': Queen,
+            'R': Rook,
+            'B': Bishop,
+            'N': Knight
+        }
+        
+        if piece_type not in piece_map:
+            return False
+            
+        # Update both the main board and the backup board
+        new_piece = piece_map[piece_type](pawn.color)
+        self.board[r][c] = new_piece
+        if hasattr(self, 'backup_board'):
+            self.backup_board[r][c] = new_piece
+        return True
+
+    def get_promotion_choices(self):
+        """
+        Return available promotion options
+        """
+        return ['Q', 'R', 'B', 'N']
 
     def check_valid_moves(self, start, board):
         piece = board[start[0]][start[1]]
@@ -571,6 +608,21 @@ class LocalGame(Game):
             print("Move leaves king in check") # Debug
             return
         
+        # Check if promotion is needed
+        if isinstance(piece, Pawn) and piece.can_promote(end_pos):
+            print("Pawn can be promoted! Choose a piece type:")
+            print("Q: Queen")
+            print("R: Rook")
+            print("B: Bishop")
+            print("N: Knight")
+            while True:
+                choice = input("Enter your choice (Q/R/B/N): ").strip().upper()
+                if choice in self.get_promotion_choices():
+                    self.backup_board[end_pos[0]][end_pos[1]] = None  # Remove pawn
+                    self.promote_pawn(end_pos, choice)  # Promote to new piece
+                    break
+                print("Invalid choice. Please try again.")
+
         # Stores last move for en passant
         self.last_move = (start_pos, end_pos)
         # Make move by updating the entire board
@@ -607,6 +659,7 @@ class LocalGame(Game):
     def local_game(self):
         while not self.game_over:
             self.display_board()
+            self.play_turn()
 
 
 class RemoteGame(Game):
@@ -619,13 +672,23 @@ class RemoteGame(Game):
         """
         Attempts to make a move from 'start' to 'end'.
         'start' and 'end' are tuples (row, col).
-        Returns True if the move was successful; otherwise, False.
-        Also, after a valid move, if the opponent is in checkmate the game is flagged as over.
+        Returns:
+        - True: Move successful
+        - False: Move failed
+        - "promotion_needed": Promotion needed
+        - "checkmate": Checkmate
+        - "stalemate": Stalemate
         """
         piece = self.get_piece_at(start, self.board)
         if piece is None or piece.color != self.turn:
             print(f"Invalid move: {start} to {end} by {self.turn}")
             return False
+
+        # Check if the pawn has reached the last rank
+        needs_promotion = False
+        if isinstance(piece, Pawn):
+            r2, _ = end
+            needs_promotion = (piece.color == 'white' and r2 == 0) or (piece.color == 'black' and r2 == 7)
 
         # Validate move using piece logic (this should include normal moves, en passant, and castling checks).
         if not piece.is_valid_move(start, end, self.board, self.last_move):
@@ -655,6 +718,13 @@ class RemoteGame(Game):
             self.backup_board = copy.deepcopy(self.board)
             return False
 
+        # Handle promotion
+        if needs_promotion:
+            print(f"Pawn at {end} needs promotion")  # Debug information
+            self.last_move = (start, end)  # Save the last move so that the frontend can continue after handling promotion
+            self.board = copy.deepcopy(self.backup_board)  # Update the main board
+            return "promotion_needed"
+
         # Stores last move for en passant
         self.last_move = (start, end)
         # Make move by updating the entire board
@@ -665,20 +735,64 @@ class RemoteGame(Game):
         # After a valid move, check if the opposing player is in checkmate.
         if self.is_checkmate(self.turn):
             self.game_over = True
+            winner = 'white' if self.turn == 'black' else 'black'
+            print(f"Checkmate! {winner.capitalize()} wins!")
+            return "checkmate"
 
-        # Check if opposite player is in
+        # Check if opposite player is in stalemate
         if self.is_stalemate(self.turn):
             self.game_over = True
+            print("Stalemate!")
+            return "stalemate"
     
         print(f"Move successful: {start} to {end} by {self.turn}")
         return True
 
+    def handle_promotion(self, pos, piece_type):
+        """
+        Handle promotion choice
+        """
+        if piece_type not in self.get_promotion_choices():
+            return False
+        
+        # Execute promotion
+        result = self.promote_pawn(pos, piece_type)
+        if result:
+            # Switch turns after successful promotion
+            self.turn = 'black' if self.turn == 'white' else 'white'
+            
+            # Check for checkmate or stalemate
+            if self.is_checkmate(self.turn):
+                self.game_over = True
+                return "checkmate"
+            if self.is_stalemate(self.turn):
+                self.game_over = True
+                return "stalemate"
+            
+            # If it's the AI's turn, trigger AI move
+            if self.bot_enabled and self.turn == self.ai_color:
+                return "bot_turn"
+            return True
+        
+        return False
+
     def restart_game(self):
         """
-        Restarts the game by reinitializing the underlying Game class.
+        Completely reset the game state
         """
-        print(self.bottom_color)
+        # Save the current bot_enabled state
+        was_bot_enabled = self.bot_enabled
+        
+        # Reinitialize all states
         self.__init__()
+        
+        # Restore bot state
+        self.bot_enabled = was_bot_enabled
+        
+        # Ensure the game over flag is reset
+        self.game_over = False
+        
+        print(f"Game restarted. Bot enabled: {self.bot_enabled}, AI color: {self.ai_color}")
 
     def quit_game(self):
         """

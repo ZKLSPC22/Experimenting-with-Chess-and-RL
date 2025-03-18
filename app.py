@@ -1,9 +1,10 @@
 from flask import Flask, render_template, request, jsonify
-from chess import RemoteGame  # 确保路径正确
+from chess import RemoteGame  # Ensure the path is correct
 from chess_bots import *
+import random
 
 app = Flask(__name__)
-game = RemoteGame()  # 实例化国际象棋游戏
+game = RemoteGame()  # Instantiate the chess game
 bot = bot1.get_bot_move
 
 def maybe_bot_move():
@@ -17,16 +18,32 @@ def maybe_bot_move():
         if request.method == 'POST':
             data = request.get_json()
             bot_enabled = data.get('bot_enabled', 'bot1')
+            
+        # Choose which bot to use
+        current_bot = None
         if bot_enabled == 'random':
-            move = random_bot.get_bot_move(game)
+            current_bot = random_bot
         elif bot_enabled == 'bot1':
-            move = bot1.get_bot_move(game)
+            current_bot = bot1
         elif bot_enabled == 'bot2':
-            move = bot2.get_bot_move(game)
+            current_bot = bot2
+            
+        if current_bot:
+            move = current_bot.get_bot_move(game)
+            
         if move:
             start, end = move
             print(f"Bot move: {start} -> {end}")
-            game.make_move(start, end)
+            result = game.make_move(start, end)
+            
+            # Handle the bot's pawn promotion
+            if result == "promotion_needed":
+                piece_type = current_bot.handle_promotion()
+                print(f"Bot promotes pawn to: {piece_type}")  # Add log
+                game.promote_pawn(end, piece_type)
+                # Switch turn
+                game.turn = 'black' if game.turn == 'white' else 'white'
+            
             game.display_board()
 
 @app.route('/')
@@ -69,21 +86,38 @@ def make_move():
     data = request.json
     start = tuple(data.get('start'))
     end = tuple(data.get('end'))
-    if game.make_move(start, end):
-        response = {
+    result = game.make_move(start, end)
+    
+    if result == "promotion_needed":
+        return jsonify({
+            'status': 'success',
+            'promotion_needed': True,
+            'board': game.get_board(),
+            'turn_color': game.turn
+        })
+    elif result == "checkmate":
+        winner = 'white' if game.turn == 'black' else 'black'
+        return jsonify({
+            'status': 'success',
+            'game_over': True,
+            'message': f'Checkmate! {winner.capitalize()} wins!',
+            'board': game.get_board(),
+            'turn_color': game.turn
+        })
+    elif result == "stalemate":
+        return jsonify({
+            'status': 'success',
+            'game_over': True,
+            'message': 'Stalemate!',
+            'board': game.get_board(),
+            'turn_color': game.turn
+        })
+    elif result:
+        return jsonify({
             'status': 'success',
             'board': game.get_board(),
             'turn_color': game.turn
-        }
-        if game.game_over:
-            if game.is_checkmate(game.turn):
-                winner = 'white' if game.turn == 'black' else 'black'
-                response['game_over'] = True
-                response['message'] = f'Checkmate! {winner.capitalize()} wins!'
-            elif game.is_stalemate(game.turn):
-                response['game_over'] = True
-                response['message'] = 'Stalemate!'
-        return jsonify(response)
+        })
     return jsonify({'status': 'invalid move'})
 
 @app.route('/get_possible_moves', methods=['POST'])
@@ -97,19 +131,81 @@ def get_possible_moves():
     except Exception as e:
         app.logger.error("Error in /get_possible_moves: %s", e)
         return jsonify({'error': str(e)}), 500
-
 @app.route('/restart', methods=['POST'])
 def restart():
     print("restart====================")
-    game.restart_game()
-    maybe_bot_move()
-    return jsonify({
-        'status': 'success',
-        'message': 'Game restarted!',
-        'board': game.get_board(),          # Add board here if needed
-        'bottom_color': game.bottom_color,
-        'turn_color': game.turn
-    })
+    try:
+        # Completely reset the game state
+        game.restart_game()
+        game.bot_enabled = False  # Reset bot status
+        game.game_over = False    # Reset game over status
+        
+        # Reset bot options
+        global bot
+        bot = bot1.get_bot_move  # Reset to default bot
+        
+        # Get the new game state
+        current_board = game.get_board()
+        current_bottom_color = game.bottom_color
+        current_turn = game.turn
+        
+        print(f"Game restarted with bottom_color: {current_bottom_color}, turn: {current_turn}")
+        
+        return jsonify({
+            'status': 'success',
+            'message': 'Game restarted!',
+            'board': current_board,
+            'bottom_color': current_bottom_color,
+            'turn_color': current_turn,
+            'bot_enabled': False  # Add bot status to response
+        })
+    except Exception as e:
+        print(f"Error restarting game: {str(e)}")
+        return jsonify({
+            'status': 'error',
+            'message': 'Failed to restart game'
+        }), 500
+
+@app.route('/promote', methods=['POST'])
+def promote():
+    print("promote====================")
+    data = request.json
+    start = tuple(data.get('start'))
+    end = tuple(data.get('end'))
+    piece_type = data.get('piece_type')
+    
+    # Execute promotion
+    result = game.handle_promotion(end, piece_type)
+    if result == True or result == "bot_turn":
+        response = {
+            'status': 'success',
+            'board': game.get_board(),
+            'turn_color': game.turn
+        }
+        # If it's the AI's turn, trigger AI move
+        if result == "bot_turn":
+            maybe_bot_move()
+            response['board'] = game.get_board()
+            response['turn_color'] = game.turn
+        return jsonify(response)
+    elif result == "checkmate":
+        winner = 'white' if game.turn == 'black' else 'black'
+        return jsonify({
+            'status': 'success',
+            'game_over': True,
+            'message': f'Checkmate! {winner.capitalize()} wins!',
+            'board': game.get_board(),
+            'turn_color': game.turn
+        })
+    elif result == "stalemate":
+        return jsonify({
+            'status': 'success',
+            'game_over': True,
+            'message': 'Stalemate!',
+            'board': game.get_board(),
+            'turn_color': game.turn
+        })
+    return jsonify({'status': 'invalid promotion'})
 
 @app.route('/quit', methods=['POST'])
 def quit():
